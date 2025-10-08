@@ -1,0 +1,20 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql
+    volumes:
+      - ./db/mysql:/var/lib/mysql
+      - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+  phpmyadmin:
+    image: phpmyadmin:5.2.2
+    container_name: phpmyadmin
+    ports: [ "8081:80" ]
+    depends_on: [ "db" ]
+    restart: always
+    environment:
+      MEMORY_LIMIT: 2G
+      UPLOAD_LIMIT: 2G
