@@ -39,22 +39,43 @@ for ($i = 0; $i < 35; $i++) {
         }
 
         /* ヘッダー */
-        .header {
+                header {
+            background: #5C9EDC;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 36px;
+            color: #FFFFFF;
+        }
+
+        .header-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 50px;
-            padding: 0 40px;
-            background-color: #5C9EDC;
-            color: #FFFFFF;
+            width: 1208px; /* 1280 - 36*2 */
+        }
+
+        .header-left a, .header-right a {
             font-size: 24px;
+            line-height: 29px;
+            color: #FFFFFF;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 50px; /* Approximate spacing */
         }
 
         .header-nav {
             display: flex;
+            align-items: center;
             gap: 50px;
         }
-
+        .notification-bell {
+            /* SVGアイコン用のスタイルプレースホルダー */
+        }
         .header-right {
             display: flex;
             align-items: center;
@@ -162,20 +183,28 @@ for ($i = 0; $i < 35; $i++) {
 <body>
 
     <div class="container">
-        <header class="header">
+            <header>
+        <div class="header-container">
             <div class="header-left">
-                <a href="#">ログアウト</a>
+                <a href="logout.php">ログアウト</a>
             </div>
-            <nav class="header-nav">
-                <a href="#">TOP</a>
-                <a href="#">日報一覧</a>
-                <a href="#">仮週報作成</a>
-            </nav>
             <div class="header-right">
-                <a href="#">マイページ</a>
-                <!-- アイコンはSVGや画像で配置するのが一般的です -->
+                <nav class="header-nav">
+                    <a href="top.php">TOP</a>
+                    <a href="#">日報一覧</a>
+                    <a href="weekly_report.php">仮週報作成</a>
+                    <a href="mypage.php">マイページ</a>
+                </nav>
+                <div class="notification-bell">
+                    <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12.5 2.8C15.8152 2.8 18.9946 4.10678 21.3891 6.50126C23.7835 8.89574 25.0903 12.0752 25.0903 15.3903C25.0903 20.3903 25.0903 22.5903 25.0903 22.5903H-0.090332C-0.090332 22.5903 -0.090332 20.3903 -0.090332 15.3903C-0.090332 12.0752 1.21645 8.89574 3.61093 6.50126C6.00541 4.10678 9.18484 2.8 12.5 2.8Z" fill="white"/>
+                        <path d="M16.5 24.8C16.5 25.5935 16.1839 26.3529 15.6213 26.9155C15.0587 27.4781 14.2993 27.8 13.5 27.8C12.7007 27.8 11.9413 27.4781 11.3787 26.9155C10.8161 26.3529 10.5 25.5935 10.5 24.8H16.5Z" fill="white"/>
+                        <path d="M12.5 0C13.5625 0.4375 13.5625 1.5625 12.5 2.1875C11.4375 1.5625 11.4375 0.4375 12.5 0Z" fill="white"/>
+                    </svg>
+                </div>
             </div>
-        </header>
+        </div>
+    </header>
 
         <main class="main-content">
             <section class="filter-bar">
@@ -209,7 +238,7 @@ for ($i = 0; $i < 35; $i++) {
                 <?php foreach ($reports as $report): ?>
                     <div class="report-card">
                         <div class="report-card-date"><?php echo htmlspecialchars($report['date'], ENT_QUOTES, 'UTF-8'); ?></div>
-                        <a href="#" class="report-card-summary" title="<?php echo htmlspecialchars($report['summary'], ENT_QUOTES, 'UTF-8'); ?>">
+                        <a href="reports_detail.php" class="report-card-summary" title="<?php echo htmlspecialchars($report['summary'], ENT_QUOTES, 'UTF-8'); ?>">
                             作業概要
                         </a>
                     </div>

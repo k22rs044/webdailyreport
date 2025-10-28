@@ -34,6 +34,12 @@ $user_email = "メールアドレスを表示";
             color: inherit;
         }
 
+        .container {
+            width: 1280px;
+            margin: 0 auto;
+            position: relative;
+        }
+
         header {
             background: #5C9EDC;
             height: 50px;
@@ -351,6 +357,89 @@ $user_email = "メールアドレスを表示";
             font-size: 12px;
             color: #615E83;
         }
+
+        /* Popup Styles */
+        .popup-overlay {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Password Change Popup Styles */
+        .password-change-popup {
+            width: 538px;
+            height: 353px;
+            background: #E0E7ED;
+            border: 5px solid #D04141;
+            border-radius: 10px;
+            box-sizing: border-box;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .password-change-popup .popup-title, .email-change-popup .popup-title {
+            font-size: 20px;
+            font-weight: 400;
+            color: #000000;
+            margin-bottom: 30px;
+        }
+        .password-change-popup .form-group, .email-change-popup .form-group {
+            width: 400px;
+            margin-bottom: 25px;
+        }
+        .password-change-popup .form-group label, .email-change-popup .form-group label {
+            font-size: 12px;
+            color: #000000;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .password-change-popup .form-group input, .email-change-popup .form-group input {
+            width: 100%;
+            height: 45px;
+            background: #FFFFFF;
+            border-radius: 10px;
+            border: none;
+            padding: 0 15px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .password-change-popup .popup-buttons, .email-change-popup .popup-buttons {
+            display: flex;
+            justify-content: space-between;
+            width: 311px;
+            margin-top: 30px;
+        }
+        .password-change-popup .popup-button, .email-change-popup .popup-button {
+            width: 100px;
+            height: 30px;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            color: #FFFFFF;
+            cursor: pointer;
+        }
+
+        /* Email Change Popup Styles */
+        .email-change-popup {
+            width: 538px;
+            height: 246px;
+            background: #E0E7ED;
+            border: 5px solid #34B717; /* Green border */
+            border-radius: 10px;
+            box-sizing: border-box;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -362,8 +451,8 @@ $user_email = "メールアドレスを表示";
             <div class="header-right">
                 <nav class="header-nav">
                     <a href="top.php">TOP</a>
-                    <a href="#">日報一覧</a>
-                    <a href="#">仮週報作成</a>
+                    <a href="reports_list.php">日報一覧</a>
+                    <a href="weekly_report.php">仮週報作成</a>
                     <a href="mypage.php">マイページ</a>
                 </nav>
                 <div class="notification-bell">
@@ -388,8 +477,8 @@ $user_email = "メールアドレスを表示";
                 </div>
                 <p class="email"><?php echo htmlspecialchars($user_email, ENT_QUOTES, 'UTF-8'); ?></p>
                 <div class="user-actions">
-                    <a href="#" class="action-button">パスワード変更</a>
-                    <a href="#" class="action-button">メールアドレス変更</a>
+                    <a href="#" id="show-password-popup" class="action-button">パスワード変更</a>
+                    <a href="#" id="show-email-popup" class="action-button">メールアドレス変更</a>
                 </div>
             </div>
             <div class="calendar-card">
@@ -416,7 +505,7 @@ $user_email = "メールアドレスを表示";
             <div class="list-card">
                 <div class="list-card-header">
                     <h3>作業詳細テンプレートリスト</h3>
-                    <a href="#" class="list-button">一覧</a>
+                    <a href="template.php" class="list-button">一覧</a>
                 </div>
                 <div class="list-items">
                     <div class="list-item"></div>
@@ -428,7 +517,7 @@ $user_email = "メールアドレスを表示";
             <div class="list-card">
                 <div class="list-card-header">
                     <h3>作業概要リスト</h3>
-                    <a href="#" class="list-button">一覧</a>
+                    <a href="next_tasks.php" class="list-button">一覧</a>
                 </div>
                 <div class="list-items">
                     <div class="list-item"></div>
@@ -483,5 +572,69 @@ $user_email = "メールアドレスを表示";
             </div>
         </div>
     </main>
+
+    <!-- Password Change Popup -->
+    <div id="password-popup-overlay" class="popup-overlay">
+        <div class="password-change-popup">
+            <h3 class="popup-title">パスワード変更</h3>
+            <form id="password-change-form" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <div class="form-group">
+                    <label for="current-password">現在のパスワードを入力</label>
+                    <input type="password" id="current-password" name="current_password">
+                </div>
+                <div class="form-group">
+                    <label for="new-password">新しいパスワードを入力</label>
+                    <input type="password" id="new-password" name="new_password">
+                </div>
+                <div class="popup-buttons">
+                    <button type="button" id="cancel-password-change" class="popup-button" style="background: #5C9EDC;">キャンセル</button>
+                    <button type="submit" class="popup-button" style="background: #34B717;">変更</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Email Change Popup -->
+    <div id="email-popup-overlay" class="popup-overlay">
+        <div class="email-change-popup">
+            <h3 class="popup-title">メールアドレス変更</h3>
+            <form id="email-change-form" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <div class="form-group">
+                    <label for="new-email">登録するメールアドレスを入力</label>
+                    <input type="email" id="new-email" name="new_email">
+                </div>
+                <div class="popup-buttons">
+                    <button type="button" id="cancel-email-change" class="popup-button" style="background: #5C9EDC;">キャンセル</button>
+                    <button type="submit" class="popup-button" style="background: #34B717;">変更</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Password Popup
+            const passwordPopupOverlay = document.getElementById('password-popup-overlay');
+            const showPasswordPopupBtn = document.getElementById('show-password-popup');
+            const cancelPasswordChangeBtn = document.getElementById('cancel-password-change');
+            const passwordChangeForm = document.getElementById('password-change-form');
+
+            showPasswordPopupBtn.addEventListener('click', (e) => { e.preventDefault(); passwordPopupOverlay.style.display = 'flex'; });
+            cancelPasswordChangeBtn.addEventListener('click', () => { passwordPopupOverlay.style.display = 'none'; });
+            passwordPopupOverlay.addEventListener('click', (e) => { if (e.target === passwordPopupOverlay) { passwordPopupOverlay.style.display = 'none'; } });
+            passwordChangeForm.addEventListener('submit', (e) => { e.preventDefault(); alert('パスワード変更処理を実装します。'); passwordPopupOverlay.style.display = 'none'; });
+
+            // Email Popup
+            const emailPopupOverlay = document.getElementById('email-popup-overlay');
+            const showEmailPopupBtn = document.getElementById('show-email-popup');
+            const cancelEmailChangeBtn = document.getElementById('cancel-email-change');
+            const emailChangeForm = document.getElementById('email-change-form');
+
+            showEmailPopupBtn.addEventListener('click', (e) => { e.preventDefault(); emailPopupOverlay.style.display = 'flex'; });
+            cancelEmailChangeBtn.addEventListener('click', () => { emailPopupOverlay.style.display = 'none'; });
+            emailPopupOverlay.addEventListener('click', (e) => { if (e.target === emailPopupOverlay) { emailPopupOverlay.style.display = 'none'; } });
+            emailChangeForm.addEventListener('submit', (e) => { e.preventDefault(); alert('メールアドレス変更処理を実装します。'); emailPopupOverlay.style.display = 'none'; });
+        });
+    </script>
 </body>
 </html>

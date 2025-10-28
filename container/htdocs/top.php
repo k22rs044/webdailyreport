@@ -9,6 +9,23 @@ session_start();
 
 $current_date = date("n月j日");
 
+// --- サンプルデータ --- (template.phpから引用)
+$templates = [
+    ['id' => 1, 'title' => '定例会議議事録', 'content' => "■決定事項\n\n\n■確認事項\n\n\n■TODO\n- [ ] 〇〇さん：〜の件\n- [ ] 自分：〜の調査"],
+    ['id' => 2, 'title' => '障害一次対応', 'content' => "■発生日時\n\n\n■事象\n\n\n■原因調査\n\n\n■対応\n\n\n■恒久対応案"],
+    ['id' => 3, 'title' => '新規機能開発', 'content' => "■背景・目的\n\n\n■実装内容\n\n\n■課題・懸念点"],
+    ['id' => 4, 'title' => '問い合わせ調査', 'content' => "■問い合わせ内容\n\n\n■調査内容\n\n\n■回答"],
+];
+
+// --- サンプルデータ --- (next_tasks.phpから引用)
+$next_tasks = [
+    "次回作業概要のサンプル 1",
+    "次回作業概要のサンプル 2",
+    "次回作業概要のサンプル 3",
+    "次回作業概要のサンプル 4",
+    "次回作業概要のサンプル 5",
+];
+
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -28,26 +45,50 @@ $current_date = date("n月j日");
             background-color: #FFFFFF;
             color: #000000;
         }
-        a { text-decoration: none; color: inherit; }
+        a { 
+            text-decoration: none; 
+            color: inherit; 
+        }
         .container {
             width: 1280px;
             margin: 0 auto;
         }
 
         /* Header */
-        .header {
+        header {
+            background: #5C9EDC;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 36px;
+            color: #FFFFFF;
+        }
+
+        .header-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 50px;
-            padding: 0 40px;
-            background-color: #5C9EDC;
-            color: #FFFFFF;
-            font-size: 24px;
+            width: 1208px; /* 1280 - 36*2 */
         }
-        .header-nav { display: flex; gap: 50px; }
-        .header-right { display: flex; align-items: center; gap: 50px; }
 
+        .header-left a, .header-right a {
+            font-size: 24px;
+            line-height: 29px;
+            color: #FFFFFF;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 50px; /* Approximate spacing */
+        }
+
+        .header-nav {
+            display: flex;
+            align-items: center;
+            gap: 50px;
+        }
         /* Main Content Layout */
         .main-content {
             display: flex;
@@ -214,8 +255,8 @@ $current_date = date("n月j日");
             border-bottom: 1px solid #d5d4df;
         }
         .chart-card-header.second {
-             border-bottom: none;
-             padding-bottom: 15px;
+            border-bottom: none;
+            padding-bottom: 15px;
         }
         .chart-body {
             background: #FFFFFF;
@@ -234,24 +275,136 @@ $current_date = date("n月j日");
         .bar.active { background: #962DFF; }
         .x-axis { display: flex; justify-content: space-around; font-size: 12px; color: #615E83; padding-top: 5px; }
 
+        /* Popup Styles */
+        .popup-overlay {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .popup-window {
+            position: relative;
+            background: #FFFFFF;
+            border: 5px solid #5C9EDC;
+            border-radius: 10px;
+            box-sizing: border-box;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .popup-title {
+            font-size: 16px;
+            line-height: 19px;
+            text-align: center;
+            color: #000000;
+            margin-bottom: 20px;
+        }
+        .popup-list {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            padding: 0 10px;
+        }
+        .popup-list-item {
+            width: 100%;
+            height: 50px;
+            background: #E0E7ED;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            color: #8E8B8B;
+            cursor: pointer;
+        }
+        .popup-list-item:hover {
+            background-color: #d1d9e0;
+        }
+        .popup-close-button {
+            margin-top: auto; /* Pushes button to the bottom */
+            padding: 8px 25px;
+            background: #8CBAE6;
+            border: none;
+            border-radius: 7px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* Template/Summary Popup */
+        .template-summary-popup {
+            width: 384px;
+            height: 474px;
+        }
+
+        /* Timer Popup Specific Styles */
+        .timer-popup-window {
+            width: 402px;
+            height: 203px;
+        }
+        #timer-display {
+            font-size: 32px;
+            line-height: 39px;
+            margin: 20px 0;
+        }
+        .timer-buttons {
+            display: flex;
+            gap: 50px;
+            margin-top: 20px;
+        }
+        .timer-button {
+            width: 100px;
+            height: 35px;
+            border-radius: 10px;
+            border: none;
+            font-size: 20px;
+            color: #FFFFFF;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #timer-pause-btn { background: #8E8B8B; }
+        #timer-end-btn { background: #5C9EDC; }
+
+        /* Registration Complete Popup Styles */
+        .registration-popup-window { width: 358px; height: 107px; border: 5px solid #5CDC69; justify-content: center; }
+        .registration-popup-message { font-size: 24px; text-align: center; color: #000000; }
     </style>
 </head>
 <body>
     <div class="container">
-        <header class="header">
+            <header>
+        <div class="header-container">
             <div class="header-left">
                 <a href="logout.php">ログアウト</a>
             </div>
-            <nav class="header-nav">
-                <a href="top.php">TOP</a>
-                <a href="reports_list.php">日報一覧</a>
-                <a href="#">仮週報作成</a>
-            </nav>
             <div class="header-right">
-                <a href="mypage.php">マイページ</a>
-                <!-- Icon placeholder -->
+                <nav class="header-nav">
+                    <a href="top.php">TOP</a>
+                    <a href="reports_list.php">日報一覧</a>
+                    <a href="weekly_report.php">仮週報作成</a>
+                    <a href="mypage.php">マイページ</a>
+                </nav>
+                <div class="notification-bell">
+                    <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12.5 2.8C15.8152 2.8 18.9946 4.10678 21.3891 6.50126C23.7835 8.89574 25.0903 12.0752 25.0903 15.3903C25.0903 20.3903 25.0903 22.5903 25.0903 22.5903H-0.090332C-0.090332 22.5903 -0.090332 20.3903 -0.090332 15.3903C-0.090332 12.0752 1.21645 8.89574 3.61093 6.50126C6.00541 4.10678 9.18484 2.8 12.5 2.8Z" fill="white"/>
+                        <path d="M16.5 24.8C16.5 25.5935 16.1839 26.3529 15.6213 26.9155C15.0587 27.4781 14.2993 27.8 13.5 27.8C12.7007 27.8 11.9413 27.4781 11.3787 26.9155C10.8161 26.3529 10.5 25.5935 10.5 24.8H16.5Z" fill="white"/>
+                        <path d="M12.5 0C13.5625 0.4375 13.5625 1.5625 12.5 2.1875C11.4375 1.5625 11.4375 0.4375 12.5 0Z" fill="white"/>
+                    </svg>
+                </div>
             </div>
-        </header>
+        </div>
+    </header>
+
 
         <main class="main-content">
             <!-- Left Column -->
@@ -259,8 +412,8 @@ $current_date = date("n月j日");
                 <div class="deadline-card">
                     提出期限まで残り<br>○○:○○
                 </div>
-                <a href="#" class="list-link-card">作業詳細テンプレート一覧</a>
-                <a href="#" class="list-link-card">作業概要リスト一覧</a>
+                <a href="template.php" class="list-link-card">作業詳細テンプレート一覧</a>
+                <a href="next_tasks.php" class="list-link-card">作業概要リスト一覧</a>
                 <div class="calendar-card">
                     <div class="calendar-header">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 18L9 12L15 6" stroke="#AFAFAF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -282,22 +435,22 @@ $current_date = date("n月j日");
             <section class="center-column">
                 <div class="report-form-card">
                     <h2><?php echo htmlspecialchars($current_date, ENT_QUOTES, 'UTF-8'); ?></h2>
-                    <form action="submit_report.php" method="post" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                    <form id="report-form" action="submit_report.php" method="post" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px;">
                         <div class="form-row">
-                            <input type="text" class="form-input" placeholder="作業概要を入力">
-                            <button type="button" class="form-button small">リスト</button>
+                            <input type="text" id="work-summary" name="summary" class="form-input" placeholder="作業概要を入力">
+                            <button type="button" id="show-summary-popup" class="form-button small">リスト</button>
                         </div>
                         <div class="form-row">
-                            <input type="text" class="form-input" placeholder="作業時間">
-                            <button type="button" class="form-button small">開始</button>
+                            <input type="text" id="work-time-input" name="work_time" class="form-input" placeholder="作業時間">
+                            <button type="button" id="start-timer-btn" class="form-button small">開始</button>
                         </div>
                         <div class="form-row">
-                            <textarea class="form-textarea" placeholder="作業詳細を入力"></textarea>
-                            <button type="button" class="form-button small" style="align-self: flex-start;">テンプレート</button>
+                            <textarea id="work-details" name="details" class="form-textarea" placeholder="作業詳細を入力"></textarea>
+                            <button type="button" id="show-template-popup" class="form-button small" style="align-self: flex-start;">テンプレート</button>
                         </div>
                         <div class="form-row">
-                            <input type="text" class="form-input" placeholder="次回作業概要を入力">
-                            <button type="button" class="form-button small">リスト</button>
+                            <input type="text" id="next-work-summary" name="next_summary" class="form-input" placeholder="次回作業概要を入力">
+                            <button type="button" id="show-next-summary-popup" class="form-button small">リスト</button>
                         </div>
                         <button type="submit" class="form-button large">登録</button>
                     </form>
@@ -348,7 +501,151 @@ $current_date = date("n月j日");
                 </div>
             </aside>
         </main>
+
+        <!-- Template Popup -->
+        <div id="template-popup-overlay" class="popup-overlay">
+            <div class="popup-window template-summary-popup">
+                <h3 class="popup-title">作業詳細テンプレートリスト</h3>
+                <div class="popup-list">
+                    <?php foreach ($templates as $template): ?>
+                        <div class="popup-list-item" data-content="<?php echo htmlspecialchars($template['content'], ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php echo htmlspecialchars($template['title'], ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <button class="popup-close-button">閉じる</button>
+            </div>
+        </div>
+
+        <!-- Summary Popup -->
+        <div id="summary-popup-overlay" class="popup-overlay">
+            <div class="popup-window template-summary-popup">
+                <h3 class="popup-title">作業概要リスト</h3>
+                <div class="popup-list">
+                    <?php foreach ($next_tasks as $task): ?>
+                        <div class="popup-list-item" data-content="<?php echo htmlspecialchars($task, ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php echo htmlspecialchars($task, ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <button class="popup-close-button">閉じる</button>
+            </div>
+        </div>
+
+        <!-- Timer Popup -->
+        <div id="timer-popup-overlay" class="popup-overlay">
+            <div class="popup-window timer-popup-window">
+                <h3 class="popup-title">作業時間記録中</h3>
+                <div id="timer-display">00:00:00</div>
+                <div class="timer-buttons">
+                    <button id="timer-pause-btn" class="timer-button">一時停止</button>
+                    <button id="timer-end-btn" class="timer-button">終了</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Registration Complete Popup -->
+        <div id="registration-popup-overlay" class="popup-overlay">
+            <div class="popup-window registration-popup-window">
+                <p class="registration-popup-message">登録完了しました</p>
+            </div>
+        </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- Template Popup ---
+            const showTemplateBtn = document.getElementById('show-template-popup');
+            const templatePopup = document.getElementById('template-popup-overlay');
+            const workDetailsTextarea = document.getElementById('work-details');
+
+            showTemplateBtn.addEventListener('click', () => { templatePopup.style.display = 'flex'; });
+
+            templatePopup.querySelectorAll('.popup-list-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    workDetailsTextarea.value = item.getAttribute('data-content');
+                    templatePopup.style.display = 'none';
+                });
+            });
+
+            // --- Summary Popup ---
+            const showSummaryBtn = document.getElementById('show-summary-popup');
+            const showNextSummaryBtn = document.getElementById('show-next-summary-popup');
+            const summaryPopup = document.getElementById('summary-popup-overlay');
+            const workSummaryInput = document.getElementById('work-summary');
+            const nextWorkSummaryInput = document.getElementById('next-work-summary');
+            let activeSummaryInput = null;
+
+            const openSummaryPopup = (targetInput) => {
+                activeSummaryInput = targetInput;
+                summaryPopup.style.display = 'flex';
+            };
+
+            showSummaryBtn.addEventListener('click', () => openSummaryPopup(workSummaryInput));
+            showNextSummaryBtn.addEventListener('click', () => openSummaryPopup(nextWorkSummaryInput));
+
+            summaryPopup.querySelectorAll('.popup-list-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    if (activeSummaryInput) {
+                        activeSummaryInput.value = item.getAttribute('data-content');
+                    }
+                    summaryPopup.style.display = 'none';
+                });
+            });
+
+            // --- Timer Popup ---
+            const startTimerBtn = document.getElementById('start-timer-btn');
+            const timerPopup = document.getElementById('timer-popup-overlay');
+            const timerDisplay = document.getElementById('timer-display');
+            const pauseBtn = document.getElementById('timer-pause-btn');
+            const endBtn = document.getElementById('timer-end-btn');
+            const workTimeInput = document.getElementById('work-time-input');
+            let timerInterval = null, totalSeconds = 0, isPaused = false;
+
+            const formatTime = s => new Date(s * 1000).toISOString().substr(11, 8);
+            const startTimer = () => {
+                isPaused = false;
+                pauseBtn.textContent = '一時停止';
+                timerInterval = setInterval(() => { totalSeconds++; timerDisplay.textContent = formatTime(totalSeconds); }, 1000);
+            };
+            const stopTimer = () => clearInterval(timerInterval);
+
+            startTimerBtn.addEventListener('click', () => {
+                totalSeconds = 0;
+                timerDisplay.textContent = formatTime(totalSeconds);
+                startTimer();
+                timerPopup.style.display = 'flex';
+            });
+            pauseBtn.addEventListener('click', () => {
+                isPaused = !isPaused;
+                pauseBtn.textContent = isPaused ? '再開' : '一時停止';
+                isPaused ? stopTimer() : startTimer();
+            });
+            endBtn.addEventListener('click', () => {
+                stopTimer();
+                workTimeInput.value = formatTime(totalSeconds);
+                timerPopup.style.display = 'none';
+            });
+
+            // --- Registration Form Submission ---
+            const reportForm = document.getElementById('report-form');
+            const registrationPopup = document.getElementById('registration-popup-overlay');
+            reportForm.addEventListener('submit', e => {
+                e.preventDefault(); // Prevent actual submission for now
+                registrationPopup.style.display = 'flex';
+                setTimeout(() => {
+                    registrationPopup.style.display = 'none';
+                    reportForm.reset();
+                }, 1500);
+            });
+
+            // --- Generic Popup Close Logic ---
+            document.querySelectorAll('.popup-overlay').forEach(popup => {
+                popup.addEventListener('click', e => { if (e.target === popup) popup.style.display = 'none'; });
+                const closeButton = popup.querySelector('.popup-close-button');
+                if (closeButton) closeButton.addEventListener('click', () => popup.style.display = 'none');
+            });
+        });
+    </script>
 </body>
 </html>
 
