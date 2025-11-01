@@ -9,6 +9,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
 
+
   phpmyadmin:
     image: phpmyadmin:5.2.2
     container_name: phpmyadmin
@@ -18,3 +19,17 @@ services:
     environment:
       MEMORY_LIMIT: 2G
       UPLOAD_LIMIT: 2G
+
+  apache:
+    build: container/dockerfile-folder/apache
+    container_name: apache_php
+    volumes:
+      #- ./htdocs:/var/www/html
+      - ./container/htdocs:/var/www/html
+      - ./php/php.ini:/usr/local/etc/php/conf.d/php.ini
+    ports: [ "8080:80" ]
+    depends_on: [ "db" ]
+    restart: always
+    environment:
+      PHP_INI_SCAN_DIR: "/usr/local/etc/php/conf.d"
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}

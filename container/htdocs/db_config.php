@@ -1,46 +1,31 @@
 <?php
-// index.php - PHP サンプルファイル
+// db_config.php - データベース接続設定 (MySQLi版)
 
-// ヘッダーで文字コードを指定
-header("Content-Type: text/html; charset=UTF-8");
+$host = 'db'; // docker-compose.ymlで定義されたサービス名
+$dbname = 'DailyReport'; // 使用するデータベース名
+$user = 'root'; // 開発環境用のユーザー名
+$password = getenv('MYSQL_ROOT_PASSWORD'); // 環境変数からパスワードを取得
+
+// MySQLiのエラー報告設定
+// エラー発生時に例外(Exception)をスローするように設定し、try-catchで捕捉できるようにする
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+try {
+    // 1. 接続インスタンスを作成 (ホスト, ユーザー, パスワード, データベース名)
+    // new PDO(...) の代わりに new mysqli(...) を使用
+    $mysqli = new mysqli($host, $user, $password, $dbname);
+    
+    // 2. 文字コードをutf8mb4に設定
+    $mysqli->set_charset("utf8mb4");
+
+} catch (mysqli_sql_exception $e) {
+    // 接続に失敗した場合、mysqli_sql_exceptionとしてキャッチされる
+    
+    // 本番環境では、エラーのログを記録し、ユーザーには汎用的なエラーメッセージを表示します。
+    error_log($e->getMessage());
+    die("データベースへの接続に失敗しました。");
+}
+
+// これ以降、データベース操作には $mysqli オブジェクトを使用します。
+// 例: $result = $mysqli->query("SELECT * FROM users");
 ?>
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>PHP サンプルページ</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f9f9f9;
-      margin: 20px;
-      padding: 20px;
-    }
-    h1 {
-      color: #333;
-    }
-    p {
-      font-size: 1.2em;
-    }
-    .info {
-      margin-top: 40px;
-      padding: 10px;
-      background-color: #e9e9e9;
-      border: 1px solid #ccc;
-    }
-  </style>
-</head>
-<body>
-  <h1>PHP サンプルページ</h1>
-  <p>Hello, World!</p>
-  <p>現在の日時: <?php echo date("Y-m-d H:i:s"); ?></p>
-
-  <div class="info">
-    <h2>PHP 情報</h2>
-    <?php
-      // PHP の詳細情報を表示（設定や拡張モジュールの確認に便利）
-      phpinfo();
-    ?>
-  </div>
-</body>
-</html>

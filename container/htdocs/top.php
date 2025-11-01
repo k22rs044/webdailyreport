@@ -434,24 +434,40 @@ $next_tasks = [
             <!-- Center Column -->
             <section class="center-column">
                 <div class="report-form-card">
+                    <!-- メッセージ表示エリア -->
+                    <div id="message-box" style="width: 100%; text-align: center; min-height: 20px;"></div>
+
+                    <!-- 登録完了ポップアップ -->
+                    <div id="registration-popup-overlay" class="popup-overlay" style="display: none;">
+                        <div class="popup-window registration-popup-window">
+                            <p class="registration-popup-message">登録完了しました</p>
+                        </div>
+                    </div>
+
                     <h2><?php echo htmlspecialchars($current_date, ENT_QUOTES, 'UTF-8'); ?></h2>
                     <form id="report-form" action="submit_report.php" method="post" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px;">
                         <div class="form-row">
-                            <input type="text" id="work-summary" name="summary" class="form-input" placeholder="作業概要を入力">
+                            <input type="text" id="work-summary" name="task" class="form-input" placeholder="作業概要を入力">
                             <button type="button" id="show-summary-popup" class="form-button small">リスト</button>
                         </div>
                         <div class="form-row">
-                            <input type="text" id="work-time-input" name="work_time" class="form-input" placeholder="作業時間">
+                            <input type="text" id="work-time-input" name="display_time" class="form-input" placeholder="作業時間">
                             <button type="button" id="start-timer-btn" class="form-button small">開始</button>
                         </div>
                         <div class="form-row">
-                            <textarea id="work-details" name="details" class="form-textarea" placeholder="作業詳細を入力"></textarea>
+                            <textarea id="work-details" name="detail" class="form-textarea" placeholder="作業詳細を入力"></textarea>
                             <button type="button" id="show-template-popup" class="form-button small" style="align-self: flex-start;">テンプレート</button>
                         </div>
                         <div class="form-row">
-                            <input type="text" id="next-work-summary" name="next_summary" class="form-input" placeholder="次回作業概要を入力">
+                            <input type="text" id="next-work-summary" name="next_task" class="form-input" placeholder="次回作業概要を入力">
                             <button type="button" id="show-next-summary-popup" class="form-button small">リスト</button>
                         </div>
+
+                        <!-- 隠しフィールド -->
+                        <input type="hidden" id="work-start-time" name="work_start" value="00:00:00">
+                        <input type="hidden" id="work-end-time" name="work_end" value="00:00:00">
+                        <input type="hidden" id="work-time-seconds" name="work_time_seconds" value="0">
+
                         <button type="submit" class="form-button large">登録</button>
                     </form>
                 </div>
@@ -544,20 +560,91 @@ $next_tasks = [
             </div>
         </div>
 
-        <!-- Registration Complete Popup -->
-        <div id="registration-popup-overlay" class="popup-overlay">
-            <div class="popup-window registration-popup-window">
-                <p class="registration-popup-message">登録完了しました</p>
-            </div>
-        </div>
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // --- ユーティリティ関数 ---
+            // 秒数を HH:MM:SS 形式にフォーマット
+            const formatTime = s => new Date(s * 1000).toISOString().substr(11, 8);
+            
+            // 現在時刻を HH:MM:SS 形式で取得 (DBのTIME型に合わせる)
+            const getCurrentTimeFormatted = () => {
+                const now = new Date();
+                const h = String(now.getHours()).padStart(2, '0');
+                const m = String(now.getMinutes()).padStart(2, '0');
+                const s = String(now.getSeconds()).padStart(2, '0');
+                return `${h}:${m}:${s}`;
+            };
+            
+
+            // メッセージ表示関数
+            function displayMessage(message, type) {
+                const messageBox = document.getElementById('message-box');
+                if (messageBox) {
+                    messageBox.textContent = message;
+                    messageBox.style.color = type === 'error' ? 'red' : 'green';
+                    setTimeout(() => { 
+                        messageBox.textContent = ''; 
+                    }, 3000);
+                }
+            }
+
+
+            // --- 要素の取得 (必要な要素を追加) ---
+            const workDetailsTextarea = document.getElementById('work-details');
+            const workSummaryInput = document.getElementById('work-summary');
+            const nextWorkSummaryInput = document.getElementById('next-work-summary');
+            const workTimeInput = document.getElementById('work-time-input'); // メイン画面の表示用
+            const reportForm = document.getElementById('report-form');
+
+            // サーバーへ送信するための隠しフィールド
+            const startHidden = document.getElementById('work-start-time'); // HTMLに追加
+            const endHidden = document.getElementById('work-end-time');     // HTMLに追加
+            const secondsHidden = document.getElementById('work-time-seconds'); // HTMLに追加
+            
+            // ポップアップ要素
+            const templatePopup = document.getElementById('template-popup-overlay');
+            const summaryPopup = document.getElementById('summary-popup-overlay');
+            const startTimerBtn = document.getElementById('start-timer-btn');
+            const timerPopup = document.getElementById('timer-popup-overlay');
+            
+            // タイマー要素
+            const timerDisplay = document.getElementById('timer-display');
+            const pauseBtn = document.getElementById('timer-pause-btn');
+            const endBtn = document.getElementById('timer-end-btn');
+
+
+            // --- タイマー機能の状態管理 ---
+            let timerInterval = null, totalSeconds = 0, isPaused = false, startTime = null;
+            let activeSummaryInput = null; // リストポップアップのターゲット
+
+            const startTimer = () => {
+                isPaused = false;
+                pauseBtn.textContent = '一時停止';                
+                
+                // 必須修正: 初回開始時にwork_startを記録
+                if (startHidden.value === '00:00:00') {
+                    startHidden.value = getCurrentTimeFormatted();
+                    displayMessage('作業時間の計測を開始しました。', 'info');
+                } else {
+                    displayMessage('作業時間の計測を再開しました。', 'info');
+                }
+                startTime = Date.now();
+                
+                timerInterval = setInterval(() => { 
+                    totalSeconds++; 
+                    timerDisplay.textContent = formatTime(totalSeconds); 
+                }, 1000);
+            };
+            
+            const stopTimer = () => clearInterval(timerInterval);
+            
+            const resetTimer = () => {
+                totalSeconds = 0;
+            };
+
             // --- Template Popup ---
             const showTemplateBtn = document.getElementById('show-template-popup');
-            const templatePopup = document.getElementById('template-popup-overlay');
-            const workDetailsTextarea = document.getElementById('work-details');
-
             showTemplateBtn.addEventListener('click', () => { templatePopup.style.display = 'flex'; });
 
             templatePopup.querySelectorAll('.popup-list-item').forEach(item => {
@@ -568,18 +655,12 @@ $next_tasks = [
             });
 
             // --- Summary Popup ---
-            const showSummaryBtn = document.getElementById('show-summary-popup');
-            const showNextSummaryBtn = document.getElementById('show-next-summary-popup');
-            const summaryPopup = document.getElementById('summary-popup-overlay');
-            const workSummaryInput = document.getElementById('work-summary');
-            const nextWorkSummaryInput = document.getElementById('next-work-summary');
-            let activeSummaryInput = null;
-
             const openSummaryPopup = (targetInput) => {
                 activeSummaryInput = targetInput;
                 summaryPopup.style.display = 'flex';
             };
-
+            const showSummaryBtn = document.getElementById('show-summary-popup');
+            const showNextSummaryBtn = document.getElementById('show-next-summary-popup');
             showSummaryBtn.addEventListener('click', () => openSummaryPopup(workSummaryInput));
             showNextSummaryBtn.addEventListener('click', () => openSummaryPopup(nextWorkSummaryInput));
 
@@ -593,61 +674,111 @@ $next_tasks = [
             });
 
             // --- Timer Popup ---
-            const startTimerBtn = document.getElementById('start-timer-btn');
-            const timerPopup = document.getElementById('timer-popup-overlay');
-            const timerDisplay = document.getElementById('timer-display');
-            const pauseBtn = document.getElementById('timer-pause-btn');
-            const endBtn = document.getElementById('timer-end-btn');
-            const workTimeInput = document.getElementById('work-time-input');
-            let timerInterval = null, totalSeconds = 0, isPaused = false;
-
-            const formatTime = s => new Date(s * 1000).toISOString().substr(11, 8);
-            const startTimer = () => {
-                isPaused = false;
-                pauseBtn.textContent = '一時停止';
-                timerInterval = setInterval(() => { totalSeconds++; timerDisplay.textContent = formatTime(totalSeconds); }, 1000);
-            };
-            const stopTimer = () => clearInterval(timerInterval);
-
             startTimerBtn.addEventListener('click', () => {
-                totalSeconds = 0;
+                // タイマーが動いていない場合のみリセット
+                if (!timerInterval) resetTimer();
                 timerDisplay.textContent = formatTime(totalSeconds);
                 startTimer();
                 timerPopup.style.display = 'flex';
             });
+            
             pauseBtn.addEventListener('click', () => {
                 isPaused = !isPaused;
                 pauseBtn.textContent = isPaused ? '再開' : '一時停止';
                 isPaused ? stopTimer() : startTimer();
+                
+                if (isPaused) {
+                    displayMessage(`計測を一時停止しました。現在: ${formatTime(totalSeconds)}`, 'info');
+                } else {
+                    displayMessage('計測を再開しました。', 'info');
+                }
             });
+            
             endBtn.addEventListener('click', () => {
                 stopTimer();
-                workTimeInput.value = formatTime(totalSeconds);
                 timerPopup.style.display = 'none';
+                
+                // 必須修正: work_end と work_time_seconds を記録
+                endHidden.value = getCurrentTimeFormatted();
+                secondsHidden.value = totalSeconds;
+                
+                // メイン画面の表示用入力欄にも反映
+                workTimeInput.value = formatTime(totalSeconds);
+                
+                // タイマーの状態をリセット
+                timerInterval = null;
+                isPaused = false;
+                
+                displayMessage(`作業時間 ${workTimeInput.value} を記録しました。`, 'info');
             });
 
             // --- Registration Form Submission ---
-            const reportForm = document.getElementById('report-form');
             const registrationPopup = document.getElementById('registration-popup-overlay');
-            reportForm.addEventListener('submit', e => {
-                e.preventDefault(); // Prevent actual submission for now
-                registrationPopup.style.display = 'flex';
-                setTimeout(() => {
-                    registrationPopup.style.display = 'none';
-                    reportForm.reset();
-                }, 1500);
+            reportForm.addEventListener('submit', async e => {
+                e.preventDefault(); // デフォルトのフォーム送信をキャンセル
+
+                // 必須項目チェック
+                const task = workSummaryInput.value.trim();
+                const detail = workDetailsTextarea.value.trim();
+                
+                if (task === '' || detail === '') {
+                    displayMessage('作業概要と作業詳細は必須項目です。', 'error');
+                    return;
+                }
+                
+
+                // タイマーが動いている場合は強制的に停止し、値を確定させる
+                if (timerInterval) {
+                    endHidden.value = getCurrentTimeFormatted();
+                    secondsHidden.value = totalSeconds;
+                    workTimeInput.value = formatTime(totalSeconds);
+                    timerInterval = null;
+                    isPaused = false;
+
+                    // ポップアップが開いていたら閉じる
+                    timerPopup.style.display = 'none'; 
+                    displayMessage(`登録前にタイマーを停止し、作業時間 ${workTimeInput.value} を確定しました。`, 'info');
+                }
+                
+                // 登録完了ポップアップ（submit_report.phpでリダイレクトするため、ここでは機能させません）
+
+                const formData = new FormData(reportForm);
+
+                try {
+                    const response = await fetch('submit_report.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        // 登録完了ポップアップを表示
+                        registrationPopup.style.display = 'flex';
+                        // フォームをリセット
+                        reportForm.reset();
+                        resetTimer(); // タイマーの秒数もリセット
+                        // 2秒後にポップアップを閉じる
+                        setTimeout(() => {
+                            registrationPopup.style.display = 'none';
+                        }, 2000);
+                    } else {
+                        displayMessage('登録に失敗しました。', 'error');
+                    }
+                } catch (error) {
+                    displayMessage('通信エラーが発生しました。', 'error');
+                }
             });
 
             // --- Generic Popup Close Logic ---
             document.querySelectorAll('.popup-overlay').forEach(popup => {
-                popup.addEventListener('click', e => { if (e.target === popup) popup.style.display = 'none'; });
+                popup.addEventListener('click', e => { 
+                    if (e.target === popup) popup.style.display = 'none'; 
+                });
                 const closeButton = popup.querySelector('.popup-close-button');
                 if (closeButton) closeButton.addEventListener('click', () => popup.style.display = 'none');
             });
         });
     </script>
-</body>
-</html>
+
 
 ```
 
