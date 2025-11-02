@@ -1,14 +1,34 @@
 <?php
-// 将来的にデータベースから取得することを想定したサンプルデータ
+
+session_start();
+require_once 'db_config.php';
+
+// ユーザーIDの取得（ログイン機能が実装されたらセッションから取得）
+$user_id = $_SESSION['user_id'] ?? 100; // 開発中は仮の値を使用
+
 $reports = [];
-$today = new DateTime();
-// 35日分（5週間 x 7日）のダミーデータを生成
-for ($i = 0; $i < 35; $i++) {
-    $date = (clone $today)->modify("-$i day");
-    $reports[] = [
-        'date' => $date->format('n月j日'),
-        'summary' => '作業概要テキストサンプル' . ($i + 1),
-    ];
+
+try {
+    // ユーザーIDに基づいて日報を取得
+    $sql = "SELECT report_id, report_date, task FROM Report WHERE user_id = ? ORDER BY report_date DESC";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('s', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        // 日付のフォーマットを変更
+        $date = new DateTime($row['report_date']);
+        $reports[] = [
+            'id' => $row['report_id'],
+            'date' => $date->format('n月j日'),
+            'task' => $row['task'],
+        ];
+    }
+} catch (Exception $e) {
+    // エラーが発生した場合、ログに記録するなどして対処
+    error_log($e->getMessage());
+    // ユーザーにはエラーメッセージを表示することも可能
 }
 ?>
 <!DOCTYPE html>
@@ -191,7 +211,7 @@ for ($i = 0; $i < 35; $i++) {
             <div class="header-right">
                 <nav class="header-nav">
                     <a href="top.php">TOP</a>
-                    <a href="#">日報一覧</a>
+                    <a href="reports_list.php">日報一覧</a>
                     <a href="weekly_report.php">仮週報作成</a>
                     <a href="mypage.php">マイページ</a>
                 </nav>
@@ -238,8 +258,8 @@ for ($i = 0; $i < 35; $i++) {
                 <?php foreach ($reports as $report): ?>
                     <div class="report-card">
                         <div class="report-card-date"><?php echo htmlspecialchars($report['date'], ENT_QUOTES, 'UTF-8'); ?></div>
-                        <a href="reports_detail.php" class="report-card-summary" title="<?php echo htmlspecialchars($report['summary'], ENT_QUOTES, 'UTF-8'); ?>">
-                            作業概要
+                        <a href="reports_detail.php?id=<?php echo htmlspecialchars($report['id'], ENT_QUOTES, 'UTF-8'); ?>" class="report-card-summary" title="<?php echo htmlspecialchars($report['task'], ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php echo htmlspecialchars($report['task'], ENT_QUOTES, 'UTF-8'); ?>
                         </a>
                     </div>
                 <?php endforeach; ?>

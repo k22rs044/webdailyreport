@@ -59,17 +59,17 @@ try {
     // 型のバインド: report_id(s), user_id(s), report_date(s), task(s), detail(s), next_task(s), work_start(s), work_end(s), work_time(i)
     // 9つの変数に対応する 'ssssssssi' に修正
     $stmt->bind_param('ssssssssi', 
-                      $report_id, 
-                      $user_id, 
-                      $report_date, 
-                      $task,        // task (DBカラム名) に対応
-                      $detail,        // detail (DBカラム名) に対応
-                      $next_task,   // next_task (DBカラム名) に対応
-                      $work_start, 
-                      $work_end, 
-                      $work_time_minutes // 分単位に変換された値を使用
+                    $report_id, 
+                    $user_id, 
+                    $report_date, 
+                    $task,        // task (DBカラム名) に対応
+                    $detail,        // detail (DBカラム名) に対応
+                    $next_task,   // next_task (DBカラム名) に対応
+                    $work_start, 
+                    $work_end, 
+                    $work_time_minutes // 分単位に変換された値を使用
     );
-                      
+                
     $stmt->execute();
     $stmt->close();
 

@@ -1,21 +1,49 @@
 <?php
 session_start();
+require_once 'db_config.php';
 
 // ログインしていない場合はログインページにリダイレクト（開発中はコメントアウト）
 // if (!isset($_SESSION['user_id'])) {
 //     header('Location: login.php');
 //     exit;
 // }
+// URLから日報IDを取得
+$report_id = $_GET['id'] ?? null;
+$report = null;
 
-// --- サンプルデータ ---
-// 本来はGETパラメータなどから日報IDを受け取り、DBからデータを取得します。
-$report = [
-    'date' => '9月18日',
-    'summary' => '作業概要のテキストがここに表示されます。',
-    'work_time' => '8時間30分',
-    'details' => '本日の作業詳細テキストがここに表示されます。複数行にわたるテキストも問題なく表示されるように設定されています。',
-    'next_summary' => '次回作業概要のテキストがここに表示されます。'
-];
+
+if ($report_id) {
+    try {
+        // プリペアドステートメントを使用して日報データを取得
+        $sql = "SELECT report_date, task, detail, next_task, work_time FROM Report WHERE report_id = ?";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param('s', $report_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $db_report = $result->fetch_assoc();
+
+        if ($db_report) {
+            // 取得したデータを表示用に整形
+            $date = new DateTime($db_report['report_date']);
+            $work_time_minutes = (int)$db_report['work_time'];
+            $hours = floor($work_time_minutes / 60);
+            $minutes = $work_time_minutes % 60;
+
+            $report = [
+                'date' => $date->format('n月j日'),
+                'summary' => $db_report['task'],
+                'work_time' => "{$hours}時間{$minutes}分",
+                'details' => $db_report['detail'],
+                'next_summary' => $db_report['next_task']
+            ];
+        }
+        $stmt->close();
+    } catch (Exception $e) {
+        error_log($e->getMessage());
+        // エラーが発生した場合は$reportをnullのままにする
+    }
+}
+
 
 $comments = [
     [
@@ -259,14 +287,20 @@ $comments = [
                 <div class="content-wrapper">
                     <!-- Report Details -->
                     <section class="report-details">
-                        <h2><?php echo htmlspecialchars($report['date'], ENT_QUOTES, 'UTF-8'); ?></h2>
-                        <div class="detail-item"><?php echo htmlspecialchars($report['summary'], ENT_QUOTES, 'UTF-8'); ?></div>
-                        <div class="detail-item time"><?php echo htmlspecialchars($report['work_time'], ENT_QUOTES, 'UTF-8'); ?></div>
-                        <div class="detail-item large"><?php echo htmlspecialchars($report['details'], ENT_QUOTES, 'UTF-8'); ?></div>
-                        <div class="detail-item"><?php echo htmlspecialchars($report['next_summary'], ENT_QUOTES, 'UTF-8'); ?></div>
+                        <?php if ($report): ?>
+                            <h2><?php echo htmlspecialchars($report['date'], ENT_QUOTES, 'UTF-8'); ?></h2>
+                            <div class="detail-item"><?php echo htmlspecialchars($report['summary'], ENT_QUOTES, 'UTF-8'); ?></div>
+                            <div class="detail-item time"><?php echo htmlspecialchars($report['work_time'], ENT_QUOTES, 'UTF-8'); ?></div>
+                            <div class="detail-item large"><?php echo nl2br(htmlspecialchars($report['details'], ENT_QUOTES, 'UTF-8')); ?></div>
+                            <div class="detail-item"><?php echo htmlspecialchars($report['next_summary'], ENT_QUOTES, 'UTF-8'); ?></div>
+                        <?php else: ?>
+                            <h2>日報が見つかりません</h2>
+                            <div class="detail-item">指定された日報は存在しないか、表示できません。</div>
+                        <?php endif; ?>
                     </section>
 
                     <!-- Comments Section -->
+                    <?php if ($report): // 日報が存在する場合のみコメント欄を表示 ?>
                     <aside class="comments-section">
                         <div class="comments-list">
                             <?php foreach ($comments as $comment): ?>
@@ -286,6 +320,7 @@ $comments = [
                             <button type="submit" class="comment-submit-button">送信</button>
                         </form>
                     </aside>
+                    <?php endif; ?>
                 </div>
             </div>
         </main>
