@@ -6,7 +6,12 @@ session_start();
 require_once 'db_config.php'; // $mysqli オブジェクトが利用可能であること
 
 // ユーザーIDの取得
-$user_id = $_SESSION['user_id'] ?? 100; // 開発中は仮の値を使用 (VARCHARに合わせる)
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401); // Unauthorized
+    echo json_encode(['success' => false, 'message' => 'ログインが必要です。']);
+    exit();
+}
+$user_id = $_SESSION['user_id'];
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php'); 
@@ -73,21 +78,21 @@ try {
     $stmt->execute();
     $stmt->close();
 
-    // 登録成功後のリダイレクト
-    // $_SESSION['success'] = '日報が正常に登録されました。';
-    header('Location: success.php'); 
+    // 登録成功後、JSONレスポンスを返す
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true]);
     exit;
 
 } catch (mysqli_sql_exception $e) {
     // 主キー重複や外部キー制約エラーなど、SQL固有のエラーを捕捉
     error_log("SQL Error: " . $e->getMessage());
-    // $_SESSION['error'] = '登録中にデータベースエラーが発生しました。';
-    header('Location: index.php'); 
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'データベースエラーが発生しました。']);
     exit;
 } catch (Exception $e) {
     // その他のエラー処理
     error_log("Report Submission Error: " . $e->getMessage());
-    // $_SESSION['error'] = '登録中にシステムエラーが発生しました。';
-    header('Location: index.php');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'システムエラーが発生しました。']);
     exit;
 }

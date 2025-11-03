@@ -3,10 +3,10 @@ session_start();
 require_once 'db_config.php';
 
 // ログインしていない場合はログインページにリダイレクト（開発中はコメントアウト）
-// if (!isset($_SESSION['user_id'])) {
-//     header('Location: login.php');
-//     exit;
-// }
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
 // URLから日報IDを取得
 $report_id = $_GET['id'] ?? null;
 $report = null;

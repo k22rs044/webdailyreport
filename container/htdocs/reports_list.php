@@ -3,8 +3,13 @@
 session_start();
 require_once 'db_config.php';
 
-// ユーザーIDの取得（ログイン機能が実装されたらセッションから取得）
-$user_id = $_SESSION['user_id'] ?? 100; // 開発中は仮の値を使用
+// ログインしていない場合はログインページにリダイレクト
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$user_id = $_SESSION['user_id'];
 
 $reports = [];
 

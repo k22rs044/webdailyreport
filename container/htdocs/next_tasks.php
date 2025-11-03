@@ -1,20 +1,30 @@
 <?php
 session_start();
+require_once 'db_config.php';
 
 // ログインしていない場合はログインページにリダイレクト（開発中はコメントアウト）
-// if (!isset($_SESSION['user_id'])) {
-//     header('Location: login.php');
-//     exit;
-// }
 
-// サンプルデータ
-$next_tasks = [
-    "次回作業概要のサンプル 1",
-    "次回作業概要のサンプル 2",
-    "次回作業概要のサンプル 3",
-    "次回作業概要のサンプル 4",
-    "次回作業概要のサンプル 5",
-];
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+$user_id = $_SESSION['user_id'];
+
+$next_tasks = [];
+try {
+    // ユーザーIDに基づいて次回作業概要を取得 (Task_Contentテーブルから)
+    $sql = "SELECT task_id, task_content FROM Task_Content WHERE user_id = ? ORDER BY task_at DESC";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('s', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $next_tasks[] = $row;
+    }
+    $stmt->close();
+} catch (Exception $e) {
+    error_log($e->getMessage());
+}
 
 ?>
 <!DOCTYPE html>
@@ -137,6 +147,61 @@ $next_tasks = [
             background-color: #d1d9e0;
         }
 
+        /* Popup Styles (template.phpから流用) */
+        .popup-overlay {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .popup-window {
+            width: 580px;
+            background: #E0E7ED;
+            border-radius: 10px;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .popup-window h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+        }
+        .popup-form-group { width: 100%; }
+        .popup-form-group label { font-size: 16px; margin-bottom: 8px; display: block; }
+        .popup-input {
+            width: 100%;
+            background: #FFFFFF;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            padding: 10px 15px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .popup-buttons { display: flex; gap: 20px; margin-top: 10px; }
+        .popup-button {
+            width: 130px;
+            height: 42px;
+            border-radius: 10px;
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            color: #FFFFFF;
+            cursor: pointer;
+        }
+        .popup-cancel-button { background-color: #8E8B8B; }
+        .popup-submit-button { background-color: #5C9EDC; }
     </style>
 </head>
 <body>
@@ -177,18 +242,89 @@ $next_tasks = [
                         <label for="sort-old">古い順</label>
                     </div>
                 </div>
-                <a href="#" class="new-task-button">新規登録</a>
+                <a href="#" id="show-new-task-popup" class="new-task-button">新規登録</a>
             </section>
 
-            <section class="task-list">
+            <section id="task-list" class="task-list">
                 <?php foreach ($next_tasks as $task): ?>
-                    <a href="#" class="task-item">
-                        <?php echo htmlspecialchars($task, ENT_QUOTES, 'UTF-8'); ?>
+                    <a href="#" class="task-item" data-id="<?php echo htmlspecialchars($task['task_id'], ENT_QUOTES, 'UTF-8'); ?>">
+                        <?php echo htmlspecialchars($task['task_content'], ENT_QUOTES, 'UTF-8'); ?>
                     </a>
                 <?php endforeach; ?>
             </section>
         </main>
+
+        <!-- New Task Popup -->
+        <div id="new-task-popup" class="popup-overlay">
+            <div class="popup-window">
+                <h2>新規作業概要登録</h2>
+                <form id="new-task-form" style="width: 100%;">
+                    <div class="popup-form-group">
+                        <label for="new-task-summary">作業概要</label>
+                        <input type="text" id="new-task-summary" name="task_summary" class="popup-input" required>
+                    </div>
+                    <div class="popup-buttons">
+                        <button type="button" id="cancel-new-task" class="popup-button popup-cancel-button">キャンセル</button>
+                        <button type="submit" class="popup-button popup-submit-button">登録</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const popup = document.getElementById('new-task-popup');
+        const showPopupBtn = document.getElementById('show-new-task-popup');
+        const cancelBtn = document.getElementById('cancel-new-task');
+        const form = document.getElementById('new-task-form');
+        const taskList = document.getElementById('task-list');
+
+        // ポップアップ表示
+        showPopupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            form.reset();
+            popup.style.display = 'flex';
+        });
+
+        // ポップアップ非表示
+        const closePopup = () => { popup.style.display = 'none'; };
+        cancelBtn.addEventListener('click', closePopup);
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) closePopup();
+        });
+
+        // フォーム送信処理
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch('next_task_create_process.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const newTask = document.createElement('a');
+                    newTask.href = '#';
+                    newTask.className = 'task-item';
+                    newTask.dataset.id = result.new_task.id;
+                    newTask.textContent = result.new_task.summary;
+
+                    taskList.prepend(newTask); // リストの先頭に追加
+                    closePopup();
+                } else {
+                    alert('エラー: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('登録中にエラーが発生しました。');
+            }
+        });
+    });
+    </script>
 </body>
 </html>
 ```

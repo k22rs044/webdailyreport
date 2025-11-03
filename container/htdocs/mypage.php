@@ -1,10 +1,10 @@
 <?php
 session_start();
 // TODO: ログインしていない場合はログインページにリダイレクト
-// if (!isset($_SESSION['user_id'])) {
-//     header('Location: login.php');
-//     exit;
-// }
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
 
 // TODO: データベースからユーザー情報を取得
 $user_name = "氏名を表示";

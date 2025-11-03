@@ -1,19 +1,29 @@
 <?php
 session_start();
+require_once 'db_config.php';
 
 // ログインしていない場合はログインページにリダイレクト（開発中はコメントアウト）
-// if (!isset($_SESSION['user_id'])) {
-//     header('Location: login.php');
-//     exit;
-// }
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+$user_id = $_SESSION['user_id']; // 開発中は仮の値を使用
 
-// --- サンプルデータ ---
-$templates = [
-    ['id' => 1, 'title' => '定例会議議事録', 'content' => "■決定事項\n\n\n■確認事項\n\n\n■TODO\n- [ ] 〇〇さん：〜の件\n- [ ] 自分：〜の調査"],
-    ['id' => 2, 'title' => '障害一次対応', 'content' => "■発生日時\n\n\n■事象\n\n\n■原因調査\n\n\n■対応\n\n\n■恒久対応案"],
-    ['id' => 3, 'title' => '新規機能開発', 'content' => "■背景・目的\n\n\n■実装内容\n\n\n■課題・懸念点"],
-    ['id' => 4, 'title' => '問い合わせ調査', 'content' => "■問い合わせ内容\n\n\n■調査内容\n\n\n■回答"],
-];
+
+$templates = [];
+try {
+    // ユーザーIDに基づいてテンプレートを取得
+    $sql = "SELECT template_id, title, content FROM Detail_Template WHERE user_id = ? ORDER BY created_at DESC";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('s', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $templates[] = ['id' => $row['template_id'], 'title' => $row['title'], 'content' => $row['content']];
+    }
+} catch (Exception $e) {
+    error_log($e->getMessage());
+}
 
 // URLから選択されたテンプレートIDを取得。なければ最初のものを選択
 $selected_id = $_GET['id'] ?? $templates[0]['id'] ?? null;
@@ -192,6 +202,62 @@ if ($selected_id) {
             overflow-y: auto;
         }
 
+        /* Popup Styles */
+        .popup-overlay {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .popup-window {
+            width: 580px;
+            background: #E0E7ED;
+            border-radius: 10px;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .popup-window h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+        }
+        .popup-form-group { width: 100%; }
+        .popup-form-group label { font-size: 16px; margin-bottom: 8px; display: block; }
+        .popup-input, .popup-textarea {
+            width: 100%;
+            background: #FFFFFF;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            padding: 10px 15px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .popup-textarea { height: 300px; resize: vertical; }
+        .popup-buttons { display: flex; gap: 20px; margin-top: 10px; }
+        .popup-button {
+            width: 130px;
+            height: 42px;
+            border-radius: 10px;
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            color: #FFFFFF;
+            cursor: pointer;
+        }
+        .popup-cancel-button { background-color: #8E8B8B; }
+        .popup-submit-button { background-color: #5C9EDC; }
     </style>
 </head>
 <body>
@@ -235,7 +301,7 @@ if ($selected_id) {
                         </div>
                     </div>
                 </section>
-                <section class="template-list">
+                <section id="template-list" class="template-list">
                     <?php foreach ($templates as $template): ?>
                         <a href="?id=<?php echo $template['id']; ?>" class="template-item <?php echo ($template['id'] == $selected_id) ? 'active' : ''; ?>">
                             <?php echo htmlspecialchars($template['title'], ENT_QUOTES, 'UTF-8'); ?>
@@ -247,8 +313,8 @@ if ($selected_id) {
             <!-- Right Column -->
             <section class="template-detail-column">
                 <div class="detail-header">
-                    <a href="#" class="action-button delete-button">削除</a>
-                    <a href="#" class="action-button new-button">新規登録</a>
+                    <a href="#" class="action-button delete-button">削除</a> <!-- 削除機能は別途実装が必要です -->
+                    <a href="#" id="show-new-template-popup" class="action-button new-button">新規登録</a>
                 </div>
 
                 <?php if ($selected_template): ?>
@@ -266,7 +332,93 @@ if ($selected_id) {
                 <a href="#" class="action-button edit-button">編集</a>
             </section>
         </main>
+
+        <!-- New Template Popup -->
+        <div id="new-template-popup" class="popup-overlay">
+            <div class="popup-window">
+                <h2>新規テンプレート登録</h2>
+                <form id="new-template-form" style="width: 100%;">
+                    <div class="popup-form-group">
+                        <label for="new-title">テンプレート名</label>
+                        <input type="text" id="new-title" name="title" class="popup-input" required>
+                    </div>
+                    <div class="popup-form-group">
+                        <label for="new-content">内容</label>
+                        <textarea id="new-content" name="content" class="popup-textarea" required></textarea>
+                    </div>
+                    <div class="popup-buttons">
+                        <button type="button" id="cancel-new-template" class="popup-button popup-cancel-button">キャンセル</button>
+                        <button type="submit" class="popup-button popup-submit-button">登録</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const popup = document.getElementById('new-template-popup');
+        const showPopupBtn = document.getElementById('show-new-template-popup');
+        const cancelBtn = document.getElementById('cancel-new-template');
+        const form = document.getElementById('new-template-form');
+        const templateList = document.getElementById('template-list');
+
+        // ポップアップ表示
+        showPopupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            form.reset();
+            popup.style.display = 'flex';
+        });
+
+        // ポップアップ非表示（キャンセルボタン）
+        cancelBtn.addEventListener('click', () => {
+            popup.style.display = 'none';
+        });
+
+        // ポップアップ非表示（オーバーレイをクリック）
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) {
+                popup.style.display = 'none';
+            }
+        });
+
+        // フォーム送信処理
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch('template_create_process.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 新しいテンプレート要素を作成
+                    const newTemplate = document.createElement('a');
+                    newTemplate.href = `?id=${result.new_template.id}`;
+                    newTemplate.className = 'template-item';
+                    newTemplate.textContent = result.new_template.title;
+
+                    // リストの先頭に追加
+                    templateList.prepend(newTemplate);
+
+                    popup.style.display = 'none';
+                    // 必要であれば、ページをリロードして新しいテンプレートを選択状態にする
+                    window.location.href = `template.php?id=${result.new_template.id}`;
+                } else {
+                    alert('エラー: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('テンプレートの登録中にエラーが発生しました。');
+            }
+        });
+    });
+    </script>
 </body>
 </html>
 ```

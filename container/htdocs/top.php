@@ -1,30 +1,48 @@
 <?php
 session_start();
+require_once 'db_config.php';
 
 // ログインしていない場合はログインページにリダイレクト（開発中はコメントアウト）
-// if (!isset($_SESSION['user_id'])) {
-//     header('Location: login.php');
-//     exit;
-// }
+
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+$user_id = $_SESSION['user_id'];
 
 $current_date = date("n月j日");
 
-// --- サンプルデータ --- (template.phpから引用)
-$templates = [
-    ['id' => 1, 'title' => '定例会議議事録', 'content' => "■決定事項\n\n\n■確認事項\n\n\n■TODO\n- [ ] 〇〇さん：〜の件\n- [ ] 自分：〜の調査"],
-    ['id' => 2, 'title' => '障害一次対応', 'content' => "■発生日時\n\n\n■事象\n\n\n■原因調査\n\n\n■対応\n\n\n■恒久対応案"],
-    ['id' => 3, 'title' => '新規機能開発', 'content' => "■背景・目的\n\n\n■実装内容\n\n\n■課題・懸念点"],
-    ['id' => 4, 'title' => '問い合わせ調査', 'content' => "■問い合わせ内容\n\n\n■調査内容\n\n\n■回答"],
-];
 
-// --- サンプルデータ --- (next_tasks.phpから引用)
-$next_tasks = [
-    "次回作業概要のサンプル 1",
-    "次回作業概要のサンプル 2",
-    "次回作業概要のサンプル 3",
-    "次回作業概要のサンプル 4",
-    "次回作業概要のサンプル 5",
-];
+$templates = [];
+try {
+    // ユーザーIDに基づいてテンプレートを取得
+    $sql = "SELECT template_id, title, content FROM Detail_Template WHERE user_id = ? ORDER BY created_at DESC";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('s', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $templates[] = ['id' => $row['template_id'], 'title' => $row['title'], 'content' => $row['content']];
+    }
+} catch (Exception $e) {
+    error_log("Error fetching templates for top.php: " . $e->getMessage());
+}
+
+$next_tasks = [];
+try {
+    // ユーザーIDに基づいて次回作業概要を取得 (Task_Contentテーブルから)
+    $sql_next_tasks = "SELECT task_id, task_content FROM Task_Content WHERE user_id = ? ORDER BY task_at DESC";
+    $stmt_next_tasks = $mysqli->prepare($sql_next_tasks);
+    $stmt_next_tasks->bind_param('s', $user_id);
+    $stmt_next_tasks->execute();
+    $result_next_tasks = $stmt_next_tasks->get_result();
+    while ($row_next_task = $result_next_tasks->fetch_assoc()) {
+        $next_tasks[] = $row_next_task;
+    }
+    $stmt_next_tasks->close();
+} catch (Exception $e) {
+    error_log("Error fetching next_tasks for top.php: " . $e->getMessage());
+}
 
 ?>
 <!DOCTYPE html>
@@ -539,8 +557,8 @@ $next_tasks = [
                 <h3 class="popup-title">作業概要リスト</h3>
                 <div class="popup-list">
                     <?php foreach ($next_tasks as $task): ?>
-                        <div class="popup-list-item" data-content="<?php echo htmlspecialchars($task, ENT_QUOTES, 'UTF-8'); ?>">
-                            <?php echo htmlspecialchars($task, ENT_QUOTES, 'UTF-8'); ?>
+                        <div class="popup-list-item" data-content="<?php echo htmlspecialchars($task['task_content'], ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php echo htmlspecialchars($task['task_content'], ENT_QUOTES, 'UTF-8'); ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -754,7 +772,11 @@ $next_tasks = [
                         // 登録完了ポップアップを表示
                         registrationPopup.style.display = 'flex';
                         // フォームをリセット
-                        reportForm.reset();
+                        reportForm.reset(); // 表示されているフォームの値をリセット
+                        // 内部の状態もリセット
+                        startHidden.value = '00:00:00';
+                        endHidden.value = '00:00:00';
+                        secondsHidden.value = 0;
                         resetTimer(); // タイマーの秒数もリセット
                         // 2秒後にポップアップを閉じる
                         setTimeout(() => {
