@@ -12,6 +12,22 @@ $user_id = $_SESSION['user_id'];
 
 $current_date = date("n月j日");
 
+// 前日の次回作業概要を取得
+$yesterday_next_task = '';
+try {
+    $yesterday_date = date('Y-m-d', strtotime('-1 day'));
+    $sql_yesterday = "SELECT next_task FROM Report WHERE user_id = ? AND report_date = ?";
+    $stmt_yesterday = $mysqli->prepare($sql_yesterday);
+    $stmt_yesterday->bind_param('ss', $user_id, $yesterday_date);
+    $stmt_yesterday->execute();
+    $result_yesterday = $stmt_yesterday->get_result();
+    if ($report_yesterday = $result_yesterday->fetch_assoc()) {
+        $yesterday_next_task = $report_yesterday['next_task'];
+    }
+    $stmt_yesterday->close();
+} catch (Exception $e) {
+    error_log("Error fetching yesterday's next task for top.php: " . $e->getMessage());
+}
 
 $templates = [];
 try {
@@ -465,7 +481,7 @@ try {
                     <h2><?php echo htmlspecialchars($current_date, ENT_QUOTES, 'UTF-8'); ?></h2>
                     <form id="report-form" action="submit_report.php" method="post" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px;">
                         <div class="form-row">
-                            <input type="text" id="work-summary" name="task" class="form-input" placeholder="作業概要を入力">
+                            <input type="text" id="work-summary" name="task" class="form-input" placeholder="作業概要を入力" value="<?php echo htmlspecialchars($yesterday_next_task, ENT_QUOTES, 'UTF-8'); ?>">
                             <button type="button" id="show-summary-popup" class="form-button small">リスト</button>
                         </div>
                         <div class="form-row">
