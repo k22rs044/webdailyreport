@@ -86,6 +86,7 @@ try {
         .container {
             width: 1280px;
             margin: 0 auto;
+            position: relative;/**/ 
         }
 
         /* Header */
@@ -415,8 +416,7 @@ try {
     </style>
 </head>
 <body>
-    <div class="container">
-            <header>
+    <header>
         <div class="header-container">
             <div class="header-left">
                 <a href="logout.php">ログアウト</a>
@@ -438,8 +438,6 @@ try {
             </div>
         </div>
     </header>
-
-
         <main class="main-content">
             <!-- Left Column -->
             <aside class="left-column">

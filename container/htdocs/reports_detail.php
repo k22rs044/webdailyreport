@@ -253,8 +253,7 @@ $comments = [
     </style>
 </head>
 <body>
-    <div class="container">
-            <header>
+    <header>
         <div class="header-container">
             <div class="header-left">
                 <a href="logout.php">ログアウト</a>
@@ -278,6 +277,7 @@ $comments = [
     </header>
 
 
+    <div class="container">
         <main class="main-content">
             <div style="width: 100%;">
                 <a href="reports_list.php" class="back-button">
@@ -324,6 +324,7 @@ $comments = [
                 </div>
             </div>
         </main>
+    </div>
     </div>
 </body>
 </html>

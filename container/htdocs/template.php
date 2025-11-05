@@ -258,6 +258,64 @@ if ($selected_id) {
         }
         .popup-cancel-button { background-color: #8E8B8B; }
         .popup-submit-button { background-color: #5C9EDC; }
+
+        /* 削除確認ポップアップのスタイル */
+        .delete-popup-window {
+            width: 542px;
+            height: 252px;
+            background: #E0E7ED;
+            border: 5px solid #DC5C5E;
+            border-radius: 10px;
+            box-sizing: border-box;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .delete-popup-title {
+            font-size: 24px;
+            line-height: 1.4;
+            color: #000000;
+            margin: 0;
+            text-align: center;
+        }
+        .delete-popup-template-name {
+            width: 312px;
+            height: 50px;
+            background: #FFFFFF;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #8E8B8B;
+            padding: 0 15px;
+            box-sizing: border-box;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .delete-popup-window .popup-buttons {
+            width: 100%;
+            justify-content: center;
+            gap: 100px;
+        }
+        .delete-popup-window .popup-button {
+            width: 150px;
+            height: 50px;
+            font-size: 24px;
+        }
+        .popup-delete-button {
+            background-color: #DC5C5C;
+        }
+        .popup-cancel-button {
+            background-color: #5C9EDC;
+        }
+        /* フォームをインライン表示にするためのスタイル */
+        #delete-template-form {
+            display: inline;
+        }
     </style>
 </head>
 <body>
@@ -285,6 +343,7 @@ if ($selected_id) {
         </div>
     </header>
 
+    <div class="container">
         <main class="main-content">
             <!-- Left Column -->
             <aside class="template-list-column">
@@ -313,7 +372,7 @@ if ($selected_id) {
             <!-- Right Column -->
             <section class="template-detail-column">
                 <div class="detail-header">
-                    <a href="#" class="action-button delete-button">削除</a> <!-- 削除機能は別途実装が必要です -->
+                    <a href="#" id="show-delete-popup" class="action-button delete-button">削除</a>
                     <a href="#" id="show-new-template-popup" class="action-button new-button">新規登録</a>
                 </div>
 
@@ -329,7 +388,7 @@ if ($selected_id) {
                     <div class="detail-content"></div>
                 <?php endif; ?>
 
-                <a href="#" class="action-button edit-button">編集</a>
+                <a href="#" id="show-edit-popup" class="action-button edit-button">編集</a>
             </section>
         </main>
 
@@ -353,6 +412,44 @@ if ($selected_id) {
                 </form>
             </div>
         </div>
+
+        <!-- Delete Confirmation Popup -->
+        <div id="delete-confirm-popup" class="popup-overlay">
+            <div class="delete-popup-window">
+                <p class="delete-popup-title">以下のテンプレートを削除します</p>
+                <div id="delete-template-name" class="delete-popup-template-name"></div>
+                <div class="popup-buttons">
+                    <button type="button" id="cancel-delete" class="popup-button popup-cancel-button">キャンセル</button>
+                    <form id="delete-template-form">
+                        <input type="hidden" id="delete-template-id" name="template_id">
+                        <button type="submit" class="popup-button popup-delete-button">削除</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+        <!-- Edit Template Popup -->
+        <div id="edit-template-popup" class="popup-overlay">
+            <div class="popup-window">
+                <h2>テンプレート編集</h2>
+                <form id="edit-template-form" style="width: 100%;">
+                    <input type="hidden" id="edit-template-id" name="template_id">
+                    <div class="popup-form-group">
+                        <label for="edit-title">テンプレート名</label>
+                        <input type="text" id="edit-title" name="title" class="popup-input" required>
+                    </div>
+                    <div class="popup-form-group">
+                        <label for="edit-content">内容</label>
+                        <textarea id="edit-content" name="content" class="popup-textarea" required></textarea>
+                    </div>
+                    <div class="popup-buttons">
+                        <button type="button" id="cancel-edit-template" class="popup-button popup-cancel-button">キャンセル</button>
+                        <button type="submit" class="popup-button popup-submit-button">更新</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -362,6 +459,17 @@ if ($selected_id) {
         const cancelBtn = document.getElementById('cancel-new-template');
         const form = document.getElementById('new-template-form');
         const templateList = document.getElementById('template-list');
+
+        const deletePopup = document.getElementById('delete-confirm-popup');
+        const showDeletePopupBtn = document.getElementById('show-delete-popup');
+        const cancelDeleteBtn = document.getElementById('cancel-delete');
+        const deleteForm = document.getElementById('delete-template-form');
+
+        const editPopup = document.getElementById('edit-template-popup');
+        const showEditPopupBtn = document.getElementById('show-edit-popup');
+        const cancelEditBtn = document.getElementById('cancel-edit-template');
+        const editForm = document.getElementById('edit-template-form');
+
 
         // ポップアップ表示
         showPopupBtn.addEventListener('click', (e) => {
@@ -417,8 +525,114 @@ if ($selected_id) {
                 alert('テンプレートの登録中にエラーが発生しました。');
             }
         });
+
+        // --- 削除機能 ---
+        // 削除ポップアップ表示
+        showDeletePopupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const selectedTemplateItem = document.querySelector('.template-item.active');
+            if (!selectedTemplateItem) {
+                alert('削除するテンプレートを選択してください。');
+                return;
+            }
+
+            const templateTitle = selectedTemplateItem.textContent.trim();
+            const urlParams = new URLSearchParams(window.location.search);
+            const templateId = urlParams.get('id');
+
+            document.getElementById('delete-template-name').textContent = templateTitle;
+            document.getElementById('delete-template-id').value = templateId;
+            deletePopup.style.display = 'flex';
+        });
+
+        // 削除ポップアップ非表示
+        const closeDeletePopup = () => { deletePopup.style.display = 'none'; };
+        cancelDeleteBtn.addEventListener('click', closeDeletePopup);
+        deletePopup.addEventListener('click', (e) => {
+            if (e.target === deletePopup) closeDeletePopup();
+        });
+
+        // 削除フォーム送信処理
+        deleteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(deleteForm);
+
+            try {
+                const response = await fetch('template_delete_process.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('テンプレートを削除しました。');
+                    window.location.href = 'template.php'; // 一覧のトップにリダイレクト
+                } else {
+                    alert('エラー: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('削除中にエラーが発生しました。');
+            }
+        });
+
+        // --- 編集機能 ---
+        // 編集ポップアップ表示
+        showEditPopupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const selectedTemplateItem = document.querySelector('.template-item.active');
+            if (!selectedTemplateItem) {
+                alert('編集するテンプレートを選択してください。');
+                return;
+            }
+
+            // PHPから埋め込まれたデータを使用
+            const templateId = '<?php echo $selected_template['id'] ?? ''; ?>';
+            const templateTitle = '<?php echo htmlspecialchars($selected_template['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>';
+            const templateContent = '<?php echo htmlspecialchars($selected_template['content'] ?? '', ENT_QUOTES, 'UTF-8'); ?>';
+
+            document.getElementById('edit-template-id').value = templateId;
+            document.getElementById('edit-title').value = templateTitle;
+            document.getElementById('edit-content').value = templateContent;
+
+            editPopup.style.display = 'flex';
+        });
+
+        // 編集ポップアップ非表示
+        const closeEditPopup = () => { editPopup.style.display = 'none'; };
+        cancelEditBtn.addEventListener('click', closeEditPopup);
+        editPopup.addEventListener('click', (e) => {
+            if (e.target === editPopup) closeEditPopup();
+        });
+
+        // 編集フォーム送信処理
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(editForm);
+
+            try {
+                const response = await fetch('template_edit_process.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('テンプレートを更新しました。');
+                    // ページをリロードして変更を反映
+                    window.location.reload();
+                } else {
+                    alert('エラー: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('更新中にエラーが発生しました。');
+            }
+        });
+
     });
     </script>
+    </div>
 </body>
 </html>
 ```

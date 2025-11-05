@@ -207,8 +207,7 @@ try {
 </head>
 <body>
 
-    <div class="container">
-            <header>
+    <header>
         <div class="header-container">
             <div class="header-left">
                 <a href="logout.php">ログアウト</a>
@@ -231,6 +230,7 @@ try {
         </div>
     </header>
 
+    <div class="container">
         <main class="main-content">
             <section class="filter-bar">
                 <label>
@@ -270,6 +270,7 @@ try {
                 <?php endforeach; ?>
             </section>
         </main>
+    </div>
     </div>
 
 </body>

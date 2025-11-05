@@ -1,50 +1,55 @@
 <?php
 session_start();
+require_once 'db_config.php';
 
 // ログインしていない場合はログインページにリダイレクト（開発中はコメントアウト）
-// if (!isset($_SESSION['user_id'])) {
-//     header('Location: login.php');
-//     exit;
-// }
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+$user_id = $_SESSION['user_id'];
 
-// サンプルデータ - 本来はDBから指定された週のデータを取得します
-$weekly_reports = [
-    [
-        'date' => '9月15日(月)',
-        'title' => '【設計】ログイン画面作成',
-        'details' => 'ログイン画面のUI設計とコンポーネント分割の検討。'
-    ],
-    [
-        'date' => '9月16日(火)',
-        'title' => '【実装】ログイン画面フロントエンド',
-        'details' => 'Figmaデザインを基にHTML/CSSでコーディング。'
-    ],
-    [
-        'date' => '9月17日(水)',
-        'title' => '【実装】ログイン処理バックエンド',
-        'details' => 'PHPでのセッション管理と認証ロジックを実装。'
-    ],
-    [
-        'date' => '9月18日(木)',
-        'title' => '【テスト】ログイン機能単体テスト',
-        'details' => '正常系・異常系のテストケースを作成し、動作確認を実施。'
-    ],
-    [
-        'date' => '9月19日(金)',
-        'title' => '【修正】軽微なバグ修正とリファクタリング',
-        'details' => 'テストで発見された軽微なバグの修正と、コードの可読性向上のためのリファクタリング。'
-    ],
-    [
-        'date' => '9月20日(土)',
-        'title' => '休日',
-        'details' => ''
-    ],
-    [
-        'date' => '9月21日(日)',
-        'title' => '休日',
-        'details' => ''
-    ],
-];
+// 週の開始日（火曜日）を計算
+$today = new DateTime();
+$day_of_week = (int)$today->format('w'); // 0:日曜, 1:月曜, 2:火曜...
+$days_to_subtract = ($day_of_week < 2) ? ($day_of_week + 7 - 2) : ($day_of_week - 2);
+$start_date = (new DateTime())->sub(new DateInterval("P{$days_to_subtract}D"));
+
+$weekly_reports = [];
+$current_date = clone $start_date;
+$weekdays_jp = ['日', '月', '火', '水', '木', '金', '土'];
+
+// 7日間分のデータを取得
+for ($i = 0; $i < 7; $i++) {
+    $date_key = $current_date->format('Y-m-d');
+    $day_index = (int)$current_date->format('w');
+    $display_date = $current_date->format('n月j日') . '(' . $weekdays_jp[$day_index] . ')';
+
+    try {
+        $sql = "SELECT task, detail FROM Report WHERE user_id = ? AND report_date = ?";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param('ss', $user_id, $date_key);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $report = $result->fetch_assoc();
+        $stmt->close();
+
+        if ($report) {
+            $weekly_reports[] = [
+                'date' => $display_date,
+                'title' => $report['task'],
+                'details' => $report['detail']
+            ];
+        } else {
+            $weekly_reports[] = ['date' => $display_date, 'title' => '該当データなし', 'details' => ''];
+        }
+    } catch (Exception $e) {
+        error_log("Weekly report fetch error: " . $e->getMessage());
+        $weekly_reports[] = ['date' => $display_date, 'title' => 'エラー', 'details' => 'データの取得に失敗しました。'];
+    }
+
+    $current_date->add(new DateInterval('P1D'));
+}
 
 ?>
 <!DOCTYPE html>
@@ -162,8 +167,7 @@ $weekly_reports = [
     </style>
 </head>
 <body>
-    <div class="container">
-            <header>
+    <header>
         <div class="header-container">
             <div class="header-left">
                 <a href="logout.php">ログアウト</a>
@@ -186,6 +190,7 @@ $weekly_reports = [
         </div>
     </header>
 
+    <div class="container">
         <main class="main-content">
             <section class="report-list">
                 <!-- Header Row -->
@@ -205,6 +210,7 @@ $weekly_reports = [
                 <?php endforeach; ?>
             </section>
         </main>
+    </div>
     </div>
 </body>
 </html>
