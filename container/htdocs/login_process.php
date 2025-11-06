@@ -38,10 +38,10 @@ try {
     // ステートメントを閉じる (メモリ解放)
     $stmt->close();
     
-    // ユーザーが存在し、パスワードが一致するか確認
-   // if ($user && password_verify($password, $user['password'])) {
+    // ユーザーが存在し、パスワードが一致するか確認（ハッシュ比較）
+    if ($user && password_verify($password, $user['password'])) {
         //  開発用の一時的な修正: 平文のパスワードを直接比較する
-    if ($user && $password === $user['password']) {
+    //if ($user && $password === $user['password']) {
         // ログイン成功
         session_regenerate_id(true);
 

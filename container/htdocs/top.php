@@ -12,6 +12,29 @@ $user_id = $_SESSION['user_id'];
 
 $current_date = date("n月j日");
 
+// --- 当日の日報が既に存在するかチェック ---
+$todays_report = null;
+$is_report_submitted = false;
+try {
+    $today_date_db = date('Y-m-d');
+    $sql_today = "SELECT task, detail, next_task, work_time FROM Report WHERE user_id = ? AND report_date = ?";
+    $stmt_today = $mysqli->prepare($sql_today);
+    $stmt_today->bind_param('ss', $user_id, $today_date_db);
+    $stmt_today->execute();
+    $result_today = $stmt_today->get_result();
+    if ($report = $result_today->fetch_assoc()) {
+        $is_report_submitted = true;
+        $todays_report = $report;
+        // 作業時間を HH:MM:SS 形式に変換
+        $work_minutes = (int)$todays_report['work_time'];
+        $hours = floor($work_minutes / 60);
+        $minutes = $work_minutes % 60;
+        $todays_report['display_time'] = sprintf('%02d:%02d:00', $hours, $minutes);
+    }
+    $stmt_today->close();
+} catch (Exception $e) {
+    error_log("Error checking today's report for top.php: " . $e->getMessage());
+}
 // 前日の次回作業概要を取得
 $yesterday_next_task = '';
 try {
@@ -27,6 +50,10 @@ try {
     $stmt_yesterday->close();
 } catch (Exception $e) {
     error_log("Error fetching yesterday's next task for top.php: " . $e->getMessage());
+}
+// 当日日報がなければ、前日の次回作業概要をセット
+if (!$is_report_submitted) {
+    $todays_report['task'] = $yesterday_next_task;
 }
 
 $templates = [];
@@ -234,6 +261,11 @@ try {
             height: 42px;
             font-size: 20px;
             margin-top: 10px;
+        }
+        .form-button:disabled {
+            background-color: #B0B0B0;
+            color: #666666;
+            cursor: not-allowed;
         }
 
         /* Right Column */
@@ -467,32 +499,30 @@ try {
             <section class="center-column">
                 <div class="report-form-card">
                     <!-- メッセージ表示エリア -->
-                    <div id="message-box" style="width: 100%; text-align: center; min-height: 20px;"></div>
-
-                    <!-- 登録完了ポップアップ -->
-                    <div id="registration-popup-overlay" class="popup-overlay" style="display: none;">
-                        <div class="popup-window registration-popup-window">
-                            <p class="registration-popup-message">登録完了しました</p>
-                        </div>
-                    </div>
+                    <div id="message-box" style="width: 100%; text-align: center; min-height: 20px; font-weight: bold;"></div>
 
                     <h2><?php echo htmlspecialchars($current_date, ENT_QUOTES, 'UTF-8'); ?></h2>
+
+                    <?php if ($is_report_submitted): ?>
+                        <p style="color: #d9534f; font-weight: bold;">本日の日報は登録済みです。</p>
+                    <?php endif; ?>
+
                     <form id="report-form" action="submit_report.php" method="post" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px;">
                         <div class="form-row">
-                            <input type="text" id="work-summary" name="task" class="form-input" placeholder="作業概要を入力" value="<?php echo htmlspecialchars($yesterday_next_task, ENT_QUOTES, 'UTF-8'); ?>">
-                            <button type="button" id="show-summary-popup" class="form-button small">リスト</button>
+                            <input type="text" id="work-summary" name="task" class="form-input" placeholder="作業概要を入力" value="<?php echo htmlspecialchars($todays_report['task'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php if ($is_report_submitted) echo 'readonly'; ?>>
+                            <button type="button" id="show-summary-popup" class="form-button small" <?php if ($is_report_submitted) echo 'disabled'; ?>>リスト</button>
                         </div>
                         <div class="form-row">
-                            <input type="text" id="work-time-input" name="display_time" class="form-input" placeholder="作業時間">
-                            <button type="button" id="start-timer-btn" class="form-button small">開始</button>
+                            <input type="text" id="work-time-input" name="display_time" class="form-input" placeholder="○○:○○" value="<?php echo htmlspecialchars($todays_report['display_time'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php if ($is_report_submitted) echo 'readonly'; ?>>
+                            <button type="button" id="start-timer-btn" class="form-button small" <?php if ($is_report_submitted) echo 'disabled'; ?>>開始</button>
                         </div>
                         <div class="form-row">
-                            <textarea id="work-details" name="detail" class="form-textarea" placeholder="作業詳細を入力"></textarea>
-                            <button type="button" id="show-template-popup" class="form-button small" style="align-self: flex-start;">テンプレート</button>
+                            <textarea id="work-details" name="detail" class="form-textarea" placeholder="作業詳細を入力" <?php if ($is_report_submitted) echo 'readonly'; ?>><?php echo htmlspecialchars($todays_report['detail'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+                            <button type="button" id="show-template-popup" class="form-button small" style="align-self: flex-start;" <?php if ($is_report_submitted) echo 'disabled'; ?>>テンプレート</button>
                         </div>
                         <div class="form-row">
-                            <input type="text" id="next-work-summary" name="next_task" class="form-input" placeholder="次回作業概要を入力">
-                            <button type="button" id="show-next-summary-popup" class="form-button small">リスト</button>
+                            <input type="text" id="next-work-summary" name="next_task" class="form-input" placeholder="次回作業概要を入力" value="<?php echo htmlspecialchars($todays_report['next_task'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php if ($is_report_submitted) echo 'readonly'; ?>>
+                            <button type="button" id="show-next-summary-popup" class="form-button small" <?php if ($is_report_submitted) echo 'disabled'; ?>>リスト</button>
                         </div>
 
                         <!-- 隠しフィールド -->
@@ -500,8 +530,6 @@ try {
                         <input type="hidden" id="work-end-time" name="work_end" value="00:00:00">
                         <input type="hidden" id="work-time-seconds" name="work_time_seconds" value="0">
 
-                        <button type="submit" class="form-button large">登録</button>
-                    </form>
                 </div>
             </section>
 
@@ -549,6 +577,13 @@ try {
                 </div>
             </aside>
         </main>
+
+        <!-- 登録完了ポップアップ -->
+        <div id="registration-popup-overlay" class="popup-overlay">
+            <div class="popup-window registration-popup-window">
+                <p class="registration-popup-message">登録完了しました</p>
+            </div>
+        </div>
 
         <!-- Template Popup -->
         <div id="template-popup-overlay" class="popup-overlay">
@@ -742,6 +777,43 @@ try {
                 isPaused = false;
                 
                 displayMessage(`作業時間 ${workTimeInput.value} を記録しました。`, 'info');
+            });
+
+            // --- 手動での時間入力処理 ---
+            workTimeInput.addEventListener('blur', () => {
+                const input = workTimeInput.value.trim();
+                if (input === '') {
+                    // 入力が空の場合はタイマーもリセット
+                    secondsHidden.value = 0;
+                    startHidden.value = '00:00:00';
+                    endHidden.value = '00:00:00';
+                    resetTimer();
+                    return;
+                }
+
+                let totalMinutes = 0;
+                // "HH:MM" または "H:M" 形式の処理
+                if (input.includes(':')) {
+                    const parts = input.split(':');
+                    const hours = parseInt(parts[0], 10) || 0;
+                    const minutes = parseInt(parts[1], 10) || 0;
+                    totalMinutes = (hours * 60) + minutes;
+                } 
+                // 小数点を含む時間形式 (例: 1.5時間)
+                else if (input.includes('.')) {
+                    const hours = parseFloat(input) || 0;
+                    totalMinutes = Math.round(hours * 60);
+                }
+                // 数字のみ（分として解釈）
+                else {
+                    totalMinutes = parseInt(input, 10) || 0;
+                }
+
+                const newTotalSeconds = totalMinutes * 60;
+                secondsHidden.value = newTotalSeconds; // 隠しフィールドに秒数を設定
+                workTimeInput.value = formatTime(newTotalSeconds); // 表示を HH:MM:SS 形式に統一
+                totalSeconds = newTotalSeconds; // 内部のタイマー状態も更新
+                displayMessage(`作業時間 ${workTimeInput.value} を設定しました。`, 'info');
             });
 
             // --- Registration Form Submission ---

@@ -1,15 +1,60 @@
 <?php
 session_start();
-// TODO: ログインしていない場合はログインページにリダイレクト
+require_once 'db_config.php';
+
+// ログインしていない場合はログインページにリダイレクト
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
 }
 
-// TODO: データベースからユーザー情報を取得
-$user_name = "氏名を表示";
-$user_student_id = "学籍番号を表示";
-$user_email = "メールアドレスを表示";
+$user_id = $_SESSION['user_id'];
+$user_name = "取得失敗";
+$user_student_id = "取得失敗";
+$user_email = "取得失敗";
+
+try {
+    $stmt = $mysqli->prepare("SELECT name, email FROM User WHERE user_id = ?");
+    $stmt->bind_param('s', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    $user_name = $result['name'] ?? '名前なし';
+    $user_email = $result['email'] ?? 'メール未登録';
+    $user_student_id = $user_id; // user_idはセッションから取得
+} catch (Exception $e) {
+    error_log("Mypage user fetch error: " . $e->getMessage());
+}
+
+// 作業詳細テンプレートリストを取得
+$templates = [];
+try {
+    $sql = "SELECT template_id, title FROM Detail_Template WHERE user_id = ? ORDER BY created_at DESC LIMIT 4";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('s', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $templates[] = $row;
+    }
+} catch (Exception $e) {
+    error_log("Mypage template fetch error: " . $e->getMessage());
+}
+
+// 作業概要リストを取得
+$next_tasks = [];
+try {
+    $sql = "SELECT task_id, task_content FROM Task_Content WHERE user_id = ? ORDER BY task_at DESC LIMIT 4";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('s', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $next_tasks[] = $row;
+    }
+} catch (Exception $e) {
+    error_log("Mypage next_tasks fetch error: " . $e->getMessage());
+}
+
 
 ?>
 <!DOCTYPE html>
@@ -208,7 +253,7 @@ $user_email = "メールアドレスを表示";
             margin-bottom: 10px;
         }
         .list-card-header h3 {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 400;
             margin: 0;
         }
@@ -394,6 +439,7 @@ $user_email = "メールアドレスを表示";
         .password-change-popup .form-group, .email-change-popup .form-group {
             width: 400px;
             margin-bottom: 25px;
+            position: relative; /* アイコン配置のため */
         }
         .password-change-popup .form-group label, .email-change-popup .form-group label {
             font-size: 12px;
@@ -401,15 +447,27 @@ $user_email = "メールアドレスを表示";
             display: block;
             margin-bottom: 5px;
         }
+        .password-change-popup .input-wrapper {
+            position: relative;
+        }
         .password-change-popup .form-group input, .email-change-popup .form-group input {
             width: 100%;
             height: 45px;
             background: #FFFFFF;
             border-radius: 10px;
             border: none;
-            padding: 0 15px;
+            padding: 0 45px 0 15px; /* アイコンのスペースを確保 */
             box-sizing: border-box;
             font-size: 16px;
+        }
+        .password-toggle-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            width: 24px;
+            height: 24px;
         }
         .password-change-popup .popup-buttons, .email-change-popup .popup-buttons {
             display: flex;
@@ -508,22 +566,32 @@ $user_email = "メールアドレスを表示";
                     <a href="template.php" class="list-button">一覧</a>
                 </div>
                 <div class="list-items">
-                    <div class="list-item"></div>
-                    <div class="list-item"></div>
-                    <div class="list-item"></div>
-                    <div class="list-item"></div>
+                    <?php if (empty($templates)): ?>
+                        <div class="list-item">登録されていません</div>
+                    <?php else: ?>
+                        <?php foreach ($templates as $template): ?>
+                            <a href="template.php?id=<?php echo htmlspecialchars($template['template_id'], ENT_QUOTES, 'UTF-8'); ?>" class="list-item">
+                                <?php echo htmlspecialchars($template['title'], ENT_QUOTES, 'UTF-8'); ?>
+                        </a>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="list-card">
                 <div class="list-card-header">
                     <h3>作業概要リスト</h3>
                     <a href="next_tasks.php" class="list-button">一覧</a>
-                </div>
-                <div class="list-items">
-                    <div class="list-item"></div>
-                    <div class="list-item"></div>
-                    <div class="list-item"></div>
-                    <div class="list-item"></div>
+                </div>                
+                <div class="list-items">                    
+                    <?php if (empty($next_tasks)): ?>
+                        <div class="list-item">登録されていません</div>
+                    <?php else: ?>
+                        <?php foreach ($next_tasks as $task): ?>
+                            <a href="next_tasks.php" class="list-item">
+                                <?php echo htmlspecialchars($task['task_content'], ENT_QUOTES, 'UTF-8'); ?>
+                        </a>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -580,11 +648,17 @@ $user_email = "メールアドレスを表示";
             <form id="password-change-form" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
                 <div class="form-group">
                     <label for="current-password">現在のパスワードを入力</label>
-                    <input type="password" id="current-password" name="current_password">
+                    <div class="input-wrapper">
+                        <input type="password" id="current-password" name="current_password">
+                        <svg class="password-toggle-icon" id="toggle-current-password" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12C18.6 16 15.6 18 12 18C8.4 18 5.4 16 3 12C5.4 8 8.4 6 12 6C15.6 6 18.6 8 21 12Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="new-password">新しいパスワードを入力</label>
-                    <input type="password" id="new-password" name="new_password">
+                    <div class="input-wrapper">
+                        <input type="password" id="new-password" name="new_password">
+                        <svg class="password-toggle-icon" id="toggle-new-password" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12C18.6 16 15.6 18 12 18C8.4 18 5.4 16 3 12C5.4 8 8.4 6 12 6C15.6 6 18.6 8 21 12Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
                 </div>
                 <div class="popup-buttons">
                     <button type="button" id="cancel-password-change" class="popup-button" style="background: #5C9EDC;">キャンセル</button>
@@ -620,9 +694,46 @@ $user_email = "メールアドレスを表示";
             const passwordChangeForm = document.getElementById('password-change-form');
 
             showPasswordPopupBtn.addEventListener('click', (e) => { e.preventDefault(); passwordPopupOverlay.style.display = 'flex'; });
-            cancelPasswordChangeBtn.addEventListener('click', () => { passwordPopupOverlay.style.display = 'none'; });
+            cancelPasswordChangeBtn.addEventListener('click', () => {
+                passwordPopupOverlay.style.display = 'none';
+                passwordChangeForm.reset(); // 入力内容をリセット
+            });
             passwordPopupOverlay.addEventListener('click', (e) => { if (e.target === passwordPopupOverlay) { passwordPopupOverlay.style.display = 'none'; } });
-            passwordChangeForm.addEventListener('submit', (e) => { e.preventDefault(); alert('パスワード変更処理を実装します。'); passwordPopupOverlay.style.display = 'none'; });
+            passwordChangeForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(passwordChangeForm);
+
+                try {
+                    const response = await fetch('password_change_process.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    alert(result.message); // 結果をアラートで表示
+                    if (result.success) {
+                        passwordPopupOverlay.style.display = 'none';
+                        passwordChangeForm.reset();
+                    }
+                } catch (error) {
+                    alert('通信中にエラーが発生しました。');
+                }
+            });
+
+            // Password visibility toggle
+            const togglePasswordVisibility = (toggleBtn, passwordInput) => {
+                toggleBtn.addEventListener('click', () => {
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                });
+            };
+
+            const currentPasswordInput = document.getElementById('current-password');
+            const toggleCurrentPasswordBtn = document.getElementById('toggle-current-password');
+            togglePasswordVisibility(toggleCurrentPasswordBtn, currentPasswordInput);
+
+            const newPasswordInput = document.getElementById('new-password');
+            const toggleNewPasswordBtn = document.getElementById('toggle-new-password');
+            togglePasswordVisibility(toggleNewPasswordBtn, newPasswordInput);
 
             // Email Popup
             const emailPopupOverlay = document.getElementById('email-popup-overlay');
