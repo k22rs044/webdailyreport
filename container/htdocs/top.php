@@ -87,6 +87,10 @@ try {
     error_log("Error fetching next_tasks for top.php: " . $e->getMessage());
 }
 
+// カウントダウンタイマー用のターゲット時刻
+$target = new DateTime('tomorrow 4:00'); // Tomorrow 4:00 AM
+$target_timestamp = $target->getTimestamp();
+
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -474,7 +478,7 @@ try {
             <!-- Left Column -->
             <aside class="left-column">
                 <div class="deadline-card">
-                    提出期限まで残り<br>○○:○○
+                    提出期限まで残り<br><span id="countdown-timer">--:--:--</span>
                 </div>
                 <a href="template.php" class="list-link-card">作業詳細テンプレート一覧</a>
                 <a href="next_tasks.php" class="list-link-card">作業概要リスト一覧</a>
@@ -529,6 +533,9 @@ try {
                         <input type="hidden" id="work-start-time" name="work_start" value="00:00:00">
                         <input type="hidden" id="work-end-time" name="work_end" value="00:00:00">
                         <input type="hidden" id="work-time-seconds" name="work_time_seconds" value="0">
+
+                        <!-- 登録ボタンを追加 -->
+                        <button type="submit" class="form-button large">登録</button>
 
                 </div>
             </section>
@@ -884,11 +891,38 @@ try {
                 const closeButton = popup.querySelector('.popup-close-button');
                 if (closeButton) closeButton.addEventListener('click', () => popup.style.display = 'none');
             });
+
+            // --- カウントダウンタイマー ---
+            const countdownElement = document.getElementById('countdown-timer');
+            if (countdownElement) {
+                const targetTimestamp = <?php echo $target_timestamp; ?> * 1000; // PHPからタイムスタンプを受け取り、ミリ秒に変換
+
+                const updateCountdown = () => {
+                    const now = new Date().getTime();
+                    const distance = targetTimestamp - now;
+
+                    if (distance < 0) {
+                        countdownElement.textContent = "00:00:00";
+                        clearInterval(countdownInterval);
+                        return;
+                    }
+
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                    countdownElement.textContent = 
+                        String(hours).padStart(2, '0') + ':' + 
+                        String(minutes).padStart(2, '0') + ':' + 
+                        String(seconds).padStart(2, '0');
+                };
+                const countdownInterval = setInterval(updateCountdown, 1000);
+                updateCountdown(); // ページ読み込み時に即時実行
+            }
         });
     </script>
 
 
-```
 
 <!--
 [PROMPT_SUGGESTION]「登録」ボタンを押したときに、フォームの内容をデータベースに保存する`submit_report.php`を作成してください。[/PROMPT_SUGGESTION]

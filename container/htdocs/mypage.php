@@ -278,6 +278,8 @@ try {
             height: 40px;
             background: #E0E7ED;
             border-radius: 10px;
+            text-align:center;
+            
         }
 
         /* --- Right Column --- */

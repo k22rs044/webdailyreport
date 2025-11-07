@@ -10,10 +10,19 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id'];
 
+// --- 並び替え順の取得 ---
+$sort_order = $_GET['sort_order'] ?? 'new'; // デフォルトは新しい順
+$order_by = '';
+if ($sort_order === 'old') {
+    $order_by = 'ORDER BY task_at ASC'; // 古い順
+} else {
+    $order_by = 'ORDER BY task_at DESC'; // 新しい順 (デフォルト)
+}
+
 $next_tasks = [];
 try {
     // ユーザーIDに基づいて次回作業概要を取得 (Task_Contentテーブルから)
-    $sql = "SELECT task_id, task_content FROM Task_Content WHERE user_id = ? ORDER BY task_at DESC";
+    $sql = "SELECT task_id, task_content FROM Task_Content WHERE user_id = ? " . $order_by;
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('s', $user_id);
     $stmt->execute();
@@ -230,20 +239,20 @@ try {
     </header>
 
         <main class="main-content">
-            <section class="filter-bar">
+            <form action="next_tasks.php" method="GET" class="filter-bar">
                 <div class="sort-options">
                     <span class="sort-label">並び替え</span>
                     <div class="radio-group">
-                        <input type="radio" id="sort-new" name="sort_order" value="new" checked>
+                        <input type="radio" id="sort-new" name="sort_order" value="new" <?php if ($sort_order === 'new') echo 'checked'; ?> onchange="this.form.submit()">
                         <label for="sort-new">新しい順</label>
                     </div>
                     <div class="radio-group">
-                        <input type="radio" id="sort-old" name="sort_order" value="old">
+                        <input type="radio" id="sort-old" name="sort_order" value="old" <?php if ($sort_order === 'old') echo 'checked'; ?> onchange="this.form.submit()">
                         <label for="sort-old">古い順</label>
                     </div>
                 </div>
                 <a href="#" id="show-new-task-popup" class="new-task-button">新規登録</a>
-            </section>
+            </form>
 
             <section id="task-list" class="task-list">
                 <?php foreach ($next_tasks as $task): ?>
@@ -327,7 +336,7 @@ try {
     </script>
 </body>
 </html>
-```
+
 
 <!--
 [PROMPT_SUGGESTION]「新規登録」ボタンを押したときに、新しい作業概要を登録するフォームページを作成してください。[/PROMPT_SUGGESTION]

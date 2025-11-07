@@ -11,13 +11,69 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
+// --- 絞り込み条件の取得 ---
+$keyword = $_GET['keyword'] ?? '';
+$period = $_GET['period'] ?? 'all';
+$start_date_input = $_GET['start_date'] ?? '';
+$end_date_input = $_GET['end_date'] ?? '';
+
+// 期間選択に応じた日付範囲の計算
+$start_date_sql = '';
+$end_date_sql = '';
+
+if ($period !== 'all') {
+    $today = new DateTime();
+    switch ($period) {
+        case 'this_week':
+            $start_date_sql = (new DateTime('this week'))->format('Y-m-d');
+            $end_date_sql = (new DateTime('this week +6 days'))->format('Y-m-d');
+            break;
+        case 'last_week':
+            $start_date_sql = (new DateTime('last week'))->format('Y-m-d');
+            $end_date_sql = (new DateTime('last week +6 days'))->format('Y-m-d');
+            break;
+        case 'this_month':
+            $start_date_sql = $today->format('Y-m-01');
+            $end_date_sql = $today->format('Y-m-t');
+            break;
+        case 'half_year':
+            $start_date_sql = (new DateTime('-6 months'))->format('Y-m-d');
+            $end_date_sql = $today->format('Y-m-d');
+            break;
+    }
+} else {
+    // 期間指定がない場合は、入力された日付を使用
+    $start_date_sql = $start_date_input;
+    $end_date_sql = $end_date_input;
+}
+
 $reports = [];
+$sql_base = "SELECT report_id, report_date, task FROM Report WHERE user_id = ?";
+$params = [$user_id];
+$types = 's';
+
+if (!empty($keyword)) {
+    $sql_base .= " AND task LIKE ?";
+    $params[] = '%' . $keyword . '%';
+    $types .= 's';
+}
+if (!empty($start_date_sql)) {
+    $sql_base .= " AND report_date >= ?";
+    $params[] = $start_date_sql;
+    $types .= 's';
+}
+if (!empty($end_date_sql)) {
+    $sql_base .= " AND report_date <= ?";
+    $params[] = $end_date_sql;
+    $types .= 's';
+}
+
+$sql_base .= " ORDER BY report_date DESC";
 
 try {
     // ユーザーIDに基づいて日報を取得
-    $sql = "SELECT report_id, report_date, task FROM Report WHERE user_id = ? ORDER BY report_date DESC";
-    $stmt = $mysqli->prepare($sql);
-    $stmt->bind_param('s', $user_id);
+    $stmt = $mysqli->prepare($sql_base);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -25,7 +81,7 @@ try {
         // 日付のフォーマットを変更
         $date = new DateTime($row['report_date']);
         $reports[] = [
-            'id' => $row['report_id'],
+            'id'   => $row['report_id'],
             'date' => $date->format('n月j日'),
             'task' => $row['task'],
         ];
@@ -142,7 +198,8 @@ try {
         }
 
         .filter-bar .date-input {
-            width: 80px;
+            width: 120px;
+            height: 40px;
         }
 
         .filter-bar .search-button {
@@ -151,8 +208,29 @@ try {
             border: none;
             border-radius: 10px;
             padding: 6px 12px;
+            width: 100px;
+            height: 40px;
+            cursor: pointer;
+            font-size: large;            
+            text-align: center;
+        }
+
+        .filter-bar .reset-button {
+            background-color: #8E8B8B;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 12px; /* search-buttonと高さを合わせる */
             width: 80px;
             cursor: pointer;
+            text-align: center;
+        }
+
+        /* 日付入力のカレンダーアイコンを大きくする */
+        .filter-bar input[type="date"]::-webkit-calendar-picker-indicator {
+            transform: scale(1.5); /* アイコンを1.5倍に拡大 */
+            cursor: pointer;
+            margin-right: 5px; /* アイコンの左側に少し余白を追加 */
         }
 
         /* 日報グリッド */
@@ -232,32 +310,33 @@ try {
 
     <div class="container">
         <main class="main-content">
-            <section class="filter-bar">
+            <form action="reports_list.php" method="GET" class="filter-bar">
                 <label>
                     作業概要
-                    <input type="text" placeholder="キーワードを入力">
+                    <input type="text" name="keyword" placeholder="キーワードを入力" value="<?php echo htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8'); ?>">
                 </label>
 
                 <select name="period">
-                    <option value="all">全部</option>
-                    <option value="this_week">今週</option>
-                    <option value="last_week">先週</option>
-                    <option value="this_month">今月</option>
-                    <option value="half_year">半年</option>
+                    <option value="all" <?php if ($period === 'all') echo 'selected'; ?>>全部</option>
+                    <option value="this_week" <?php if ($period === 'this_week') echo 'selected'; ?>>今週</option>
+                    <option value="last_week" <?php if ($period === 'last_week') echo 'selected'; ?>>先週</option>
+                    <option value="this_month" <?php if ($period === 'this_month') echo 'selected'; ?>>今月</option>
+                    <option value="half_year" <?php if ($period === 'half_year') echo 'selected'; ?>>半年</option>
                 </select>
 
                 <label>
                     開始日
-                    <input type="text" class="date-input" placeholder="yyyy/mm/dd">
+                    <input type="date" name="start_date" class="date-input" value="<?php echo htmlspecialchars($start_date_input, ENT_QUOTES, 'UTF-8'); ?>">
                 </label>
                 <span>～</span>
                 <label>
                     終了日
-                    <input type="text" class="date-input" placeholder="yyyy/mm/dd">
+                    <input type="date" name="end_date" class="date-input" value="<?php echo htmlspecialchars($end_date_input, ENT_QUOTES, 'UTF-8'); ?>">
                 </label>
 
-                <button type="button" class="search-button">絞り込み</button>
-            </section>
+                <button type="submit" class="search-button">絞り込み</button>
+                <a href="reports_list.php" class="reset-button">リセット</a>
+            </form>
 
             <section class="report-grid">
                 <?php foreach ($reports as $report): ?>

@@ -328,7 +328,7 @@ $comments = [
     </div>
 </body>
 </html>
-```
+
 
 <!--
 [PROMPT_SUGGESTION]「送信」ボタンを押したときにコメントを保存する`submit_comment.php`を作成してください。[/PROMPT_SUGGESTION]

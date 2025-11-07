@@ -9,11 +9,19 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id']; // 開発中は仮の値を使用
 
+// --- 並び替え順の取得 ---
+$sort_order = $_GET['sort_order'] ?? 'new'; // デフォルトは新しい順
+$order_by = '';
+if ($sort_order === 'old') {
+    $order_by = 'ORDER BY created_at ASC'; // 古い順
+} else {
+    $order_by = 'ORDER BY created_at DESC'; // 新しい順 (デフォルト)
+}
 
 $templates = [];
 try {
     // ユーザーIDに基づいてテンプレートを取得
-    $sql = "SELECT template_id, title, content FROM Detail_Template WHERE user_id = ? ORDER BY created_at DESC";
+    $sql = "SELECT template_id, title, content FROM Detail_Template WHERE user_id = ? " . $order_by;
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('s', $user_id);
     $stmt->execute();
@@ -345,21 +353,21 @@ if ($selected_id) {
 
     <div class="container">
         <main class="main-content">
-            <!-- Left Column -->
             <aside class="template-list-column">
-                <section class="filter-bar">
+                <!-- Left Column -->
+                <form action="template.php" method="GET" class="filter-bar">
                     <div class="sort-options">
                         <span>並び替え</span>
                         <div class="radio-group">
-                            <input type="radio" id="sort-new" name="sort_order" value="new" checked>
+                            <input type="radio" id="sort-new" name="sort_order" value="new" <?php if ($sort_order === 'new') echo 'checked'; ?> onchange="this.form.submit()">
                             <label for="sort-new">新しい順</label>
                         </div>
                         <div class="radio-group">
-                            <input type="radio" id="sort-old" name="sort_order" value="old">
+                            <input type="radio" id="sort-old" name="sort_order" value="old" <?php if ($sort_order === 'old') echo 'checked'; ?> onchange="this.form.submit()">
                             <label for="sort-old">古い順</label>
                         </div>
                     </div>
-                </section>
+                </form>
                 <section id="template-list" class="template-list">
                     <?php foreach ($templates as $template): ?>
                         <a href="?id=<?php echo $template['id']; ?>" class="template-item <?php echo ($template['id'] == $selected_id) ? 'active' : ''; ?>">
@@ -635,7 +643,6 @@ if ($selected_id) {
     </div>
 </body>
 </html>
-```
 
 <!--
 [PROMPT_SUGGESTION]「新規登録」ボタンを押したときに、新しいテンプレートを作成するフォームページを作成してください。[/PROMPT_SUGGESTION]

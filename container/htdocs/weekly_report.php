@@ -214,7 +214,6 @@ for ($i = 0; $i < 7; $i++) {
     </div>
 </body>
 </html>
-```
 
 <!--
 [PROMPT_SUGGESTION]この週報をPDFとしてエクスポートする機能を追加してください。[/PROMPT_SUGGESTION]
