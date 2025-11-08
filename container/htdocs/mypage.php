@@ -55,7 +55,47 @@ try {
     error_log("Mypage next_tasks fetch error: " . $e->getMessage());
 }
 
+// 日報提出日数を取得
+$submission_count = 0;
+try {
+    $sql_count = "SELECT COUNT(report_id) as count FROM Report WHERE user_id = ?";
+    $stmt_count = $mysqli->prepare($sql_count);
+    $stmt_count->bind_param('s', $user_id);
+    $stmt_count->execute();
+    $result_count = $stmt_count->get_result()->fetch_assoc();
+    $submission_count = $result_count['count'];
+    $stmt_count->close();
+} catch (Exception $e) {
+    error_log("Error fetching submission count for mypage.php: " . $e->getMessage());
+}
 
+// 提出率を計算
+$submission_rate = 0;
+if ($submission_count > 0) {
+    try {
+        // 初めて日報を提出した日を取得
+        $sql_first_date = "SELECT MIN(report_date) as first_date FROM Report WHERE user_id = ?";
+        $stmt_first_date = $mysqli->prepare($sql_first_date);
+        $stmt_first_date->bind_param('s', $user_id);
+        $stmt_first_date->execute();
+        $result_first_date = $stmt_first_date->get_result()->fetch_assoc();
+        $first_report_date = $result_first_date['first_date'];
+        $stmt_first_date->close();
+
+        if ($first_report_date) {
+            // 初回提出日から今日までの総日数を計算
+            $first_date = new DateTime($first_report_date);
+            $today = new DateTime();
+            $total_days = $today->diff($first_date)->days + 1; // 当日も含むため+1
+
+            if ($total_days > 0) {
+                $submission_rate = round(($submission_count / $total_days) * 100);
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Error calculating submission rate for mypage.php: " . $e->getMessage());
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -289,15 +329,15 @@ try {
             background: #E0E7ED;
             border-radius: 10px;
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-evenly;
+            padding: 10px;
         }
         .progress-circle {
-            position: absolute;
             width: 150px;
             height: 150px;
-            left: 22px;
-            top: 11px;
             border-radius: 50%;
-            background: conic-gradient(#8CBAE6 0% 75%, #E0E7ED 75% 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -313,10 +353,8 @@ try {
             font-size: 26px;
         }
         .progress-text {
-            position: absolute;
-            right: 20px;
-            top: 89px;
             text-align: center;
+            margin-top: 10px;
         }
         .progress-text .label { font-size: 24px; }
         .progress-text .days { font-size: 28.6px; }
@@ -514,6 +552,9 @@ try {
                     <a href="reports_list.php">日報一覧</a>
                     <a href="weekly_report.php">仮週報作成</a>
                     <a href="mypage.php">マイページ</a>
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                        <a href="admin.php">管理者画面</a>
+                    <?php endif; ?>
                 </nav>
                 <div class="notification-bell">
                     <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -599,12 +640,12 @@ try {
         </div>
         <div class="column-right">
             <div class="progress-card">
-                <div class="progress-circle">
-                    <div class="progress-inner-circle">75％</div>
+                <div class="progress-circle" style="background: conic-gradient(#8CBAE6 0% <?php echo $submission_rate; ?>%, #dcdcdc <?php echo $submission_rate; ?>% 100%);">
+                    <div class="progress-inner-circle"><?php echo $submission_rate; ?>％</div>
                 </div>
                 <div class="progress-text">
                     <div class="label">提出日数</div>
-                    <div class="days">○○日</div>
+                    <div class="days"><?php echo htmlspecialchars($submission_count, ENT_QUOTES, 'UTF-8'); ?>日</div>
                 </div>
             </div>
             <div class="chart-card">

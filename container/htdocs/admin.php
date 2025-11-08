@@ -8,10 +8,15 @@ require_once 'db_config.php';
 //     exit;
 // }
 
+// 並び替え条件の取得
+$sort_order = $_GET['sort'] ?? 'asc'; // デフォルトは昇順
+$order_by_clause = 'ORDER BY user_id ' . ($sort_order === 'desc' ? 'DESC' : 'ASC');
+
+
 $users = [];
 try {
     // Userテーブルから全ユーザー情報を取得
-    $sql = "SELECT user_id, name, email FROM User ORDER BY user_id ASC";
+    $sql = "SELECT user_id, name, email FROM User " . $order_by_clause;
     $stmt = $mysqli->prepare($sql);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -342,8 +347,10 @@ try {
                     <a href="reports_list.php">日報一覧</a>
                     <a href="weekly_report.php">仮週報作成</a>
                     <a href="mypage.php">マイページ</a>
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                        <a href="admin.php">管理者画面</a>
+                    <?php endif; ?>
                 </nav>
-                <a href="admin.php">管理者画面</a>
                 <div class="notification-bell">
                     <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12.5 2.8C15.8152 2.8 18.9946 4.10678 21.3891 6.50126C23.7835 8.89574 25.0903 12.0752 25.0903 15.3903C25.0903 20.3903 25.0903 22.5903 25.0903 22.5903H-0.090332C-0.090332 22.5903 -0.090332 20.3903 -0.090332 15.3903C-0.090332 12.0752 1.21645 8.89574 3.61093 6.50126C6.00541 4.10678 9.18484 2.8 12.5 2.8Z" fill="white"/>
@@ -358,15 +365,17 @@ try {
     <div class="main-container">
         <div class="control-bar">
             <a href="#" id="show-delete-popup" class="delete-button">削除</a>
-            <div class="sort-bar">
-                <span>並び替え</span>
-                <label>
-                    <input type="radio" name="sort" value="asc" checked> 昇順
-                </label>
-                <label>
-                    <input type="radio" name="sort" value="desc"> 降順
-                </label>
-            </div>
+            <form id="sort-form" action="admin.php" method="GET">
+                <div class="sort-bar">
+                    <span>並び替え</span>
+                    <label>
+                        <input type="radio" name="sort" value="asc" onchange="this.form.submit()" <?php if ($sort_order === 'asc') echo 'checked'; ?>> 昇順
+                    </label>
+                    <label>
+                        <input type="radio" name="sort" value="desc" onchange="this.form.submit()" <?php if ($sort_order === 'desc') echo 'checked'; ?>> 降順
+                    </label>
+                </div>
+            </form>
             <a href="#" id="show-new-user-popup" class="new-user-button">新規登録</a>
         </div>
 

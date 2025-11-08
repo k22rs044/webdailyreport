@@ -49,8 +49,13 @@ try {
         $_SESSION['name'] = $user['name'];
         $_SESSION['role'] = $user['role'];
 
-        header('Location: top.php');
-        exit;
+        // 権限によってリダイレクト先を変更
+        if ($user['role'] === 'admin') {
+            header('Location: admin.php');
+        } else {
+            header('Location: top.php');
+        }
+        exit();
     } else {
         // ログイン失敗
         $_SESSION['error'] = 'IDまたはパスワードが正しくありません。';

@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
+$is_admin = (isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
 
 // --- 絞り込み条件の取得 ---
 $keyword = $_GET['keyword'] ?? '';
@@ -48,42 +49,65 @@ if ($period !== 'all') {
 }
 
 $reports = [];
-$sql_base = "SELECT report_id, report_date, task FROM Report WHERE user_id = ?";
-$params = [$user_id];
-$types = 's';
+
+// SQLのベース部分を管理者かどうかで切り替える
+if ($is_admin) {
+    // 管理者の場合: UserテーブルとJOINして氏名を取得
+    $sql_base = "SELECT r.report_id, r.report_date, r.task, u.name 
+                FROM Report r 
+                JOIN User u ON r.user_id = u.user_id 
+                 WHERE 1=1"; // 条件句の開始
+    $params = [];
+    $types = '';
+} else {
+    // 一般ユーザーの場合: 自分の日報のみ
+    $sql_base = "SELECT report_id, report_date, task 
+                FROM Report 
+                WHERE user_id = ?";
+    $params = [$user_id];
+    $types = 's';
+}
 
 if (!empty($keyword)) {
-    $sql_base .= " AND task LIKE ?";
-    $params[] = '%' . $keyword . '%';
-    $types .= 's';
+    if ($is_admin) {
+        $sql_base .= " AND (task LIKE ? OR u.name LIKE ?)";
+        $params[] = '%' . $keyword . '%';
+        $params[] = '%' . $keyword . '%';
+        $types .= 'ss';
+    } else {
+        $sql_base .= " AND task LIKE ?";
+        $params[] = '%' . $keyword . '%';
+        $types .= 's';
+    }
 }
 if (!empty($start_date_sql)) {
-    $sql_base .= " AND report_date >= ?";
+    $sql_base .= " AND " . ($is_admin ? "r." : "") . "report_date >= ?";
     $params[] = $start_date_sql;
     $types .= 's';
 }
 if (!empty($end_date_sql)) {
-    $sql_base .= " AND report_date <= ?";
+    $sql_base .= " AND " . ($is_admin ? "r." : "") . "report_date <= ?";
     $params[] = $end_date_sql;
     $types .= 's';
 }
 
-$sql_base .= " ORDER BY report_date DESC";
+$sql_base .= " ORDER BY " . ($is_admin ? "r." : "") . "report_date DESC" . ($is_admin ? ", u.name ASC" : "");
 
 try {
-    // ユーザーIDに基づいて日報を取得
     $stmt = $mysqli->prepare($sql_base);
-    $stmt->bind_param($types, ...$params);
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
 
     while ($row = $result->fetch_assoc()) {
-        // 日付のフォーマットを変更
         $date = new DateTime($row['report_date']);
         $reports[] = [
             'id'   => $row['report_id'],
             'date' => $date->format('n月j日'),
             'task' => $row['task'],
+            'name' => $row['name'] ?? null // 管理者でない場合はnull
         ];
     }
 } catch (Exception $e) {
@@ -120,7 +144,7 @@ try {
         }
 
         /* ヘッダー */
-                header {
+        header {
             background: #5C9EDC;
             height: 50px;
             display: flex;
@@ -230,7 +254,7 @@ try {
         .filter-bar input[type="date"]::-webkit-calendar-picker-indicator {
             transform: scale(1.5); /* アイコンを1.5倍に拡大 */
             cursor: pointer;
-            margin-right: 5px; /* アイコンの左側に少し余白を追加 */
+            margin-right: 5px; /* アイコンの右側に少し余白を追加 */
         }
 
         /* 日報グリッド */
@@ -254,8 +278,15 @@ try {
 
         .report-card-date {
             font-size: 14px;
-            text-align: center;
+            text-align: left;
             font-weight: 400;
+            padding-left: 5px;
+        }
+
+        .report-card-name {
+            font-size: 12px;
+            text-align: right;
+            padding-right: 5px;
         }
 
         .report-card-summary {
@@ -296,6 +327,9 @@ try {
                     <a href="reports_list.php">日報一覧</a>
                     <a href="weekly_report.php">仮週報作成</a>
                     <a href="mypage.php">マイページ</a>
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                        <a href="admin.php">管理者画面</a>
+                    <?php endif; ?>
                 </nav>
                 <div class="notification-bell">
                     <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -316,7 +350,7 @@ try {
                     <input type="text" name="keyword" placeholder="キーワードを入力" value="<?php echo htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8'); ?>">
                 </label>
 
-                <select name="period">
+                <select name="period" onchange="this.form.submit()">
                     <option value="all" <?php if ($period === 'all') echo 'selected'; ?>>全部</option>
                     <option value="this_week" <?php if ($period === 'this_week') echo 'selected'; ?>>今週</option>
                     <option value="last_week" <?php if ($period === 'last_week') echo 'selected'; ?>>先週</option>
@@ -341,7 +375,12 @@ try {
             <section class="report-grid">
                 <?php foreach ($reports as $report): ?>
                     <div class="report-card">
-                        <div class="report-card-date"><?php echo htmlspecialchars($report['date'], ENT_QUOTES, 'UTF-8'); ?></div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="report-card-date"><?php echo htmlspecialchars($report['date'], ENT_QUOTES, 'UTF-8'); ?></div>
+                            <?php if ($is_admin && $report['name']): ?>
+                                <div class="report-card-name"><?php echo htmlspecialchars($report['name'], ENT_QUOTES, 'UTF-8'); ?></div>
+                            <?php endif; ?>
+                        </div>
                         <a href="reports_detail.php?id=<?php echo htmlspecialchars($report['id'], ENT_QUOTES, 'UTF-8'); ?>" class="report-card-summary" title="<?php echo htmlspecialchars($report['task'], ENT_QUOTES, 'UTF-8'); ?>">
                             <?php echo htmlspecialchars($report['task'], ENT_QUOTES, 'UTF-8'); ?>
                         </a>

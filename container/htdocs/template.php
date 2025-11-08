@@ -339,6 +339,9 @@ if ($selected_id) {
                     <a href="reports_list.php">日報一覧</a>
                     <a href="weekly_report.php">仮週報作成</a>
                     <a href="mypage.php">マイページ</a>
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                        <a href="admin.php">管理者画面</a>
+                    <?php endif; ?>
                 </nav>
                 <div class="notification-bell">
                     <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
