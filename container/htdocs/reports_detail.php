@@ -8,16 +8,42 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 // URLから日報IDを取得
-$report_id = $_GET['id'] ?? null;
+$report_id = $_GET['id'] ?? null; // report_id を取得
+
+// 現在ログインしているユーザーのIDを取得
+$user_id = $_SESSION['user_id'] ?? null;
+
+// 現在ログインしているユーザーの名前を取得
+$current_user_name = "不明なユーザー";
+if ($user_id) {
+    try {
+        $sql_user = "SELECT name FROM User WHERE user_id = ?";
+        $stmt_user = $mysqli->prepare($sql_user);
+        $stmt_user->bind_param('s', $user_id);
+        $stmt_user->execute();
+        $current_user_name = $stmt_user->get_result()->fetch_assoc()['name'] ?? '不明なユーザー';
+        $stmt_user->close();
+    } catch (Exception $e) { error_log("Error fetching current user name: " . $e->getMessage()); }
+}
 $report = null;
 
 
 if ($report_id) {
     try {
         // プリペアドステートメントを使用して日報データを取得
-        $sql = "SELECT report_date, task, detail, next_task, work_time FROM Report WHERE report_id = ?";
-        $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('s', $report_id);
+        $is_admin = (isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
+
+        if ($is_admin) {
+            // 管理者の場合はreport_idのみで検索
+            $sql = "SELECT report_date, task, detail, next_task, work_time FROM Report WHERE report_id = ?";
+            $stmt = $mysqli->prepare($sql);
+            $stmt->bind_param('s', $report_id);
+        } else {
+            // 一般ユーザーの場合は自分の日報のみ
+            $sql = "SELECT report_date, task, detail, next_task, work_time FROM Report WHERE report_id = ? AND user_id = ?";
+            $stmt = $mysqli->prepare($sql);
+            $stmt->bind_param('ss', $report_id, $user_id);
+        }
         $stmt->execute();
         $result = $stmt->get_result();
         $db_report = $result->fetch_assoc();
@@ -44,19 +70,28 @@ if ($report_id) {
     }
 }
 
+// コメントをデータベースから取得
+$comments = [];
+if ($report_id) {
+    try {
+        $sql_comments = "SELECT c.comment_content, c.comment_at, u.name AS author_name 
+                        FROM Comment c
+                        JOIN User u ON c.user_id = u.user_id
+                        WHERE c.report_id = ?
+                        ORDER BY c.comment_at DESC";
+        $stmt_comments = $mysqli->prepare($sql_comments);
+        $stmt_comments->bind_param('s', $report_id);
+        $stmt_comments->execute();
+        $result_comments = $stmt_comments->get_result();
+        while ($row = $result_comments->fetch_assoc()) {
+            $comments[] = $row;
+        }
+        $stmt_comments->close();
+    } catch (Exception $e) {
+        error_log("Error fetching comments: " . $e->getMessage());
+    }
+}
 
-$comments = [
-    [
-        'author' => '田中 太郎',
-        'timestamp' => '2023/09/18 18:30',
-        'body' => 'お疲れ様です。この件、承知いたしました。'
-    ],
-    [
-        'author' => '鈴木 花子',
-        'timestamp' => '2023/09/18 19:00',
-        'body' => '確認しました。ありがとうございます。'
-    ]
-];
 
 ?>
 <!DOCTYPE html>
@@ -182,10 +217,11 @@ $comments = [
             align-self: flex-start;
             margin-left: calc((100% - 342px) / 2);
         }
-        .detail-item.large {
+        .detail-item.large { /*作業詳細*/
             height: 260px;
             white-space: pre-wrap; /* To respect newlines */
             overflow-y: auto;
+            line-height: 0.7; /* フォントサイズのn倍の行間 */
         }
 
         /* Comments Section (Right) */
@@ -196,13 +232,14 @@ $comments = [
             padding: 15px;
             box-sizing: border-box;
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* 修正 */
+            height: 600px; /* 高さを固定 */
         }
         .comments-list {
             flex-grow: 1;
             overflow-y: auto;
             display: flex;
-            flex-direction: column;
+            flex-direction: column-reverse; /* 新しいコメントが下に来るように逆順にする */
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -219,9 +256,10 @@ $comments = [
             background: #FFFFFF;
             border-radius: 10px;
             padding: 15px;
-            min-height: 72px;
+            /*min-height: 72px;*/
             font-size: 20px;
             color: #333;
+            line-height: 0.5; /* フォントサイズのn倍の行間 */
         }
         .comment-form {
             display: flex;
@@ -309,16 +347,22 @@ $comments = [
                             <?php foreach ($comments as $comment): ?>
                                 <div class="comment-card">
                                     <div class="comment-header">
-                                        <?php echo htmlspecialchars($comment['timestamp'], ENT_QUOTES, 'UTF-8'); ?>　
-                                        <?php echo htmlspecialchars($comment['author'], ENT_QUOTES, 'UTF-8'); ?>
+                                        <?php
+                                            // DBの時刻(UTCと仮定)を日本時間に変換して表示
+                                            $comment_date = new DateTime($comment['comment_at'], new DateTimeZone('UTC'));
+                                            $comment_date->setTimezone(new DateTimeZone('Asia/Tokyo'));
+                                            echo htmlspecialchars($comment_date->format('Y/m/d H:i'), ENT_QUOTES, 'UTF-8');
+                                        ?>
+                                        <?php echo htmlspecialchars($comment['author_name'], ENT_QUOTES, 'UTF-8'); ?>
                                     </div>
                                     <div class="comment-body">
-                                        <?php echo nl2br(htmlspecialchars($comment['body'], ENT_QUOTES, 'UTF-8')); ?>
+                                        <?php echo nl2br(htmlspecialchars($comment['comment_content'], ENT_QUOTES, 'UTF-8')); ?>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
                         </div>
-                        <form action="submit_comment.php" method="post" class="comment-form">
+                        <form id="comment-form" action="submit_comment.php" method="post" class="comment-form">
+                            <input type="hidden" name="report_id" value="<?php echo htmlspecialchars($report_id, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="text" name="comment" class="comment-input" placeholder="コメントを入力">
                             <button type="submit" class="comment-submit-button">送信</button>
                         </form>
@@ -330,9 +374,65 @@ $comments = [
     </div>
     </div>
 </body>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const commentForm = document.getElementById('comment-form');
+        const commentInput = document.querySelector('input[name="comment"]');
+        const commentsList = document.querySelector('.comments-list');
+
+        if (commentForm) {
+            commentForm.addEventListener('submit', async function(e) {
+                e.preventDefault(); // フォームのデフォルト送信を防止
+
+                const formData = new FormData(commentForm);
+                const commentText = formData.get('comment').trim();
+
+                if (!commentText) {
+                    alert('コメントを入力してください。');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('submit_comment.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // 新しいコメントをリストに動的に追加
+                        const newCommentDiv = document.createElement('div');
+                        newCommentDiv.classList.add('comment-card');
+
+                        // PHPのnl2br相当の処理をJSで行う
+                        const commentBody = result.comment.comment_content.replace(/\n/g, '<br>');
+
+                        newCommentDiv.innerHTML = `
+                            <div class="comment-header">
+                                ${result.comment.comment_at}
+                                ${result.comment.author_name}
+                            </div>
+                            <div class="comment-body">
+                                ${commentBody}
+                            </div>
+                        `;
+                        commentsList.prepend(newCommentDiv); // column-reverseのため、prependで末尾に追加される
+                        commentInput.value = ''; // 入力フィールドをクリア
+                        // column-reverseなのでスクロールは不要
+                    } else {
+                        alert('コメントの投稿に失敗しました: ' + result.message);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('コメントの送信中にエラーが発生しました。');
+                }
+            });
+        }
+    });
+</script>
 </html>
+
 
 
 <!--
 [PROMPT_SUGGESTION]「送信」ボタンを押したときにコメントを保存する`submit_comment.php`を作成してください。[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]日報一覧ページで各日報カードをクリックしたら、その日報のIDを渡してこの詳細ページに遷移するようにしてください。[/PROMPT_SUGGESTION]

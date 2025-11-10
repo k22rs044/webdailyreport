@@ -129,8 +129,90 @@ if ($submission_count > 0) {
     }
 }
 // カウントダウンタイマー用のターゲット時刻
-$target = new DateTime('tomorrow 4:00'); // Tomorrow 4:00 AM
+$target = new DateTime('tomorrow 4:00', new DateTimeZone('Asia/Tokyo')); // 日本時間の午前4時に設定
 $target_timestamp = $target->getTimestamp();
+
+// --- 総作業時間を取得 ---
+$total_work_time_minutes = 0;
+try {
+    $sql_total_work_time = "SELECT SUM(work_time) as total_minutes FROM Report WHERE user_id = ?";
+    $stmt_total_work_time = $mysqli->prepare($sql_total_work_time);
+    $stmt_total_work_time->bind_param('s', $user_id);
+    $stmt_total_work_time->execute();
+    $result_total_work_time = $stmt_total_work_time->get_result()->fetch_assoc();
+    $total_work_time_minutes = $result_total_work_time['total_minutes'] ?? 0;
+    $stmt_total_work_time->close();
+} catch (Exception $e) {
+    error_log("Error fetching total work time for top.php: " . $e->getMessage());
+}
+$total_work_time_hours = round($total_work_time_minutes / 60, 1); // 時間に変換し、小数点以下1桁に丸める
+
+// --- 週間作業時間を取得 ---
+// 週の開始日（火曜日）を計算 (weekly_report.php と同じロジック)
+$today_for_week = new DateTime();
+$day_of_week_for_week = (int)$today_for_week->format('w'); // 0:日曜, 1:月曜, 2:火曜...
+// 火曜日(2)を週の始まりとする
+$days_to_subtract_for_week = ($day_of_week_for_week < 2) ? ($day_of_week_for_week + 7 - 2) : ($day_of_week_for_week - 2);
+$start_of_week = (new DateTime())->sub(new DateInterval("P{$days_to_subtract_for_week}D"))->format('Y-m-d');
+$end_of_week = (new DateTime($start_of_week))->add(new DateInterval('P6D'))->format('Y-m-d');
+
+$weekly_work_time_minutes = 0;
+try {
+    $sql_weekly_work_time = "SELECT SUM(work_time) as weekly_minutes FROM Report WHERE user_id = ? AND report_date BETWEEN ? AND ?";
+    $stmt_weekly_work_time = $mysqli->prepare($sql_weekly_work_time);
+    $stmt_weekly_work_time->bind_param('sss', $user_id, $start_of_week, $end_of_week);
+    $stmt_weekly_work_time->execute();
+    $result_weekly_work_time = $stmt_weekly_work_time->get_result()->fetch_assoc();
+    $weekly_work_time_minutes = $result_weekly_work_time['weekly_minutes'] ?? 0;
+    $stmt_weekly_work_time->close();
+} catch (Exception $e) {
+    error_log("Error fetching weekly work time for top.php: " . $e->getMessage());
+}
+$weekly_work_time_hours = round($weekly_work_time_minutes / 60, 1); // 時間に変換し、小数点以下1桁に丸める
+
+// --- 週間作業時間（日別）をグラフ用に取得 ---
+$chart_labels = [];
+$chart_values_minutes = [];
+$max_work_minutes_in_week = 0; // グラフの高さ計算用
+$today_day_of_week = (int)(new DateTime())->format('w');
+
+$current_day_for_chart = new DateTime($start_of_week);
+$weekdays_jp_short = ['日', '月', '火', '水', '木', '金', '土'];
+
+for ($i = 0; $i < 7; $i++) {
+    $date_key = $current_day_for_chart->format('Y-m-d');
+    $day_of_week_index = (int)$current_day_for_chart->format('w');
+
+    // X軸ラベル (火, 水, 木...)
+    $chart_labels[] = $weekdays_jp_short[$day_of_week_index];
+
+    // その日の作業時間を取得
+    $daily_minutes = 0;
+    try {
+        $sql_daily = "SELECT SUM(work_time) as minutes FROM Report WHERE user_id = ? AND report_date = ?";
+        $stmt_daily = $mysqli->prepare($sql_daily);
+        $stmt_daily->bind_param('ss', $user_id, $date_key);
+        $stmt_daily->execute();
+        $result_daily = $stmt_daily->get_result()->fetch_assoc();
+        $daily_minutes = (int)($result_daily['minutes'] ?? 0);
+        $stmt_daily->close();
+    } catch (Exception $e) {
+        error_log("Error fetching daily work time for chart: " . $e->getMessage());
+    }
+
+    $chart_values_minutes[] = $daily_minutes;
+
+    if ($daily_minutes > $max_work_minutes_in_week) {
+        $max_work_minutes_in_week = $daily_minutes;
+    }
+
+    $current_day_for_chart->add(new DateInterval('P1D'));
+}
+
+// Y軸の最大値を決める (最低でも4時間=240分、最大作業時間がそれ以上ならそれに合わせる)
+$y_axis_max_minutes = max(240, $max_work_minutes_in_week);
+
+
 
 ?>
 <!DOCTYPE html>
@@ -231,8 +313,18 @@ $target_timestamp = $target->getTimestamp();
             border-radius: 12px;
             padding: 22px;
         }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .calendar-month { font-weight: 900; font-size: 18px; }
+        .calendar-header {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 10px; 
+        }
+
+        .calendar-month { 
+            font-weight: 900; 
+            font-size: 18px; 
+        }
+
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 1px; }
         .calendar-grid div { padding: 8px 0; font-size: 11px; }
         .calendar-grid .day-name { font-weight: 600; }
@@ -264,6 +356,7 @@ $target_timestamp = $target->getTimestamp();
             width: 100%;
             justify-content: center;
             align-items: center;
+            line-height: 0.7; /* フォントサイズのn倍の行間 */
         }
         .form-input, .form-textarea {
             background: #FFFFFF;
@@ -336,6 +429,8 @@ $target_timestamp = $target->getTimestamp();
             display: flex;
             justify-content: center;
             align-items: center;
+            flex-shrink: 0; /* Flexアイテムが縮小しないようにする */
+            flex-grow: 0;   /* Flexアイテムが拡大しないようにする */
         }
         .progress-inner-circle {
             width: 100px;
@@ -344,6 +439,8 @@ $target_timestamp = $target->getTimestamp();
             background: #E0E7ED;
             display: grid;
             place-items: center;
+            flex-shrink: 0; /* Flexアイテムが縮小しないようにする */
+            flex-grow: 0;   /* Flexアイテムが拡大しないようにする */
             font-size: 26px;
         }
         .progress-text {
@@ -374,18 +471,63 @@ $target_timestamp = $target->getTimestamp();
             background: #FFFFFF;
             border-radius: 10px;
             height: 281px;
-            display: flex;
-            padding: 10px;
+            display: flex; /* y-axis と chart-area を横に並べる */
         }
-        .y-axis { display: flex; flex-direction: column-reverse; justify-content: space-between; font-size: 14px; color: #615E83; padding-right: 5px; }
-        .chart-area { flex-grow: 1; position: relative; }
-        .chart-lines { position: absolute; inset: 0; display: flex; flex-direction: column-reverse; justify-content: space-between; }
-        .chart-lines div { border-top: 1.5px dashed #E0E7ED; }
-        .chart-lines div:first-child { border-top: 1.5px solid #E0E7ED; }
-        .chart-bars { position: absolute; bottom: 0; left: 0; right: 0; height: 100%; display: flex; justify-content: space-around; align-items: flex-end; padding: 0 5px; }
-        .bar { width: 17px; background: #F0E5FC; border-radius: 7px 7px 0 0; }
-        .bar.active { background: #962DFF; }
-        .x-axis { display: flex; justify-content: space-around; font-size: 12px; color: #615E83; padding-top: 5px; }
+        .y-axis {
+            display: flex;
+            flex-direction: column-reverse;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #615E83;
+            padding: 10px 5px 10px 10px; /* 上下左右のパディング */
+            text-align: right;
+        }
+        .chart-area {
+            flex-grow: 1;
+            position: relative;
+            padding: 10px 10px 0 10px; /* 上左右のパディング、下はx-axisがあるので0 */
+        }
+        .chart-lines {
+            position: absolute;
+            inset: 10px 10px 0 10px; /* chart-areaのpaddingに合わせる */
+            display: flex;
+            flex-direction: column-reverse;
+            justify-content: space-between;
+        }
+        .chart-lines div { 
+            border-top: 1.5px dashed #E0E7ED; 
+        }
+
+        .chart-lines div:first-child { 
+            border-top: 1.5px solid #E0E7ED; 
+        }
+
+        .chart-bars {
+            height: 100%;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            padding-left: 10px; /* バー全体を右にpxずらす */
+        }
+
+        .bar {
+            width: 15px;
+            background: #F0E5FC;
+            border-radius: 7px 7px 0 0;
+            /*padding: 0 1px; /* 左右に1pxのpaddingを追加 */
+        }
+
+        .bar.active {
+            background: #962DFF;
+        }
+        
+        .x-axis {
+            display: flex;
+            justify-content: space-around;
+            font-size: 12px;
+            color: #615E83;
+            padding: 5px 10px 0 55px; /* 左側のY軸分を考慮してパディングを設定 */
+        }
 
         /* Popup Styles */
         .popup-overlay {
@@ -597,33 +739,46 @@ $target_timestamp = $target->getTimestamp();
                 </div>
                 <div class="chart-card">
                     <div class="chart-card-header">
-                        <span>Card Title</span>
-                        <span>Card Title</span>
+                        <span>総作業時間</span>
+                        <span><?php echo htmlspecialchars($total_work_time_hours, ENT_QUOTES, 'UTF-8'); ?>時間</span>
                     </div>
                     <div class="chart-card-header second">
-                        <span>Card Title</span>
-                        <span>Card Title</span>
+                        <span>週間作業時間</span>
+                        <span><?php echo htmlspecialchars($weekly_work_time_hours, ENT_QUOTES, 'UTF-8'); ?>時間</span>
                     </div>
                     <div class="chart-body">
+                        <?php
+                            // Y軸のラベルを動的に生成 (0h, 2h, 4h, 6h...)
+                            $y_axis_hours = ceil($y_axis_max_minutes / 60);
+                            $y_step = ceil($y_axis_hours / 4) * 2; // 2の倍数で切り上げ
+                            if ($y_step == 0) $y_step = 2; // 最小でも2h刻み
+                        ?>
                         <div class="y-axis">
-                            <span>0h</span><span>2h</span><span>4h</span><span>6h</span>
+                            <span>0h</span>
+                            <span><?php echo $y_step / 2; ?>h</span>
+                            <span><?php echo $y_step; ?>h</span>
+                            <span><?php echo $y_step * 1.5; ?>h</span>
                         </div>
                         <div class="chart-area">
                             <div class="chart-lines">
                                 <div></div><div></div><div></div><div></div>
                             </div>
                             <div class="chart-bars">
-                                <div class="bar" style="height: 57%"></div>
-                                <div class="bar" style="height: 30%"></div>
-                                <div class="bar" style="height: 60%"></div>
-                                <div class="bar" style="height: 36%"></div>
-                                <div class="bar active" style="height: 83%"></div>
-                                <div class="bar" style="height: 0%"></div>
-                                <div class="bar" style="height: 0%"></div>
+                                <?php foreach ($chart_values_minutes as $index => $minutes): ?>
+                                    <?php
+                                        $height_percentage = ($y_axis_max_minutes > 0) ? ($minutes / $y_axis_max_minutes) * 100 : 0;
+                                        $is_today_bar = ($weekdays_jp_short[$today_day_of_week] === $chart_labels[$index]);
+                                        $active_class = $is_today_bar ? 'active' : '';
+                                    ?>
+                                    <div class="bar <?php echo $active_class; ?>" style="height: <?php echo $height_percentage; ?>%"></div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
                     <div class="x-axis">
+                        <?php foreach ($chart_labels as $label): ?>
+                            <span><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></span>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </aside>
@@ -965,9 +1120,3 @@ $target_timestamp = $target->getTimestamp();
             }
         });
     </script>
-
-
-
-<!--
-[PROMPT_SUGGESTION]「登録」ボタンを押したときに、フォームの内容をデータベースに保存する`submit_report.php`を作成してください。[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]「作業時間」の「開始」ボタンを押したらタイマーが作動するJavaScript機能を追加してください。[/PROMPT_SUGGESTION]
