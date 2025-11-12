@@ -15,12 +15,34 @@ $order_by_clause = 'ORDER BY user_id ' . ($sort_order === 'desc' ? 'DESC' : 'ASC
 
 $users = [];
 try {
-    // Userテーブルから全ユーザー情報を取得
-    $sql = "SELECT user_id, name, email FROM User " . $order_by_clause;
+    // Userテーブルから全ユーザー情報を取得し、提出日数と提出率を計算するサブクエリを追加
+    $sql = "SELECT 
+                u.user_id, 
+                u.name, 
+                u.email,
+                (SELECT COUNT(report_id) FROM Report WHERE user_id = u.user_id) AS submission_count,
+                (
+                    SELECT
+                        ROUND((COUNT(report_id) / (
+                            SELECT DATEDIFF(CURDATE(), MIN(report_date)) + 1
+                            FROM Report 
+                            WHERE user_id = u.user_id
+                        )) * 100) 
+                    FROM Report 
+                    WHERE user_id = u.user_id
+                ) AS submission_rate
+            FROM User u
+            " . $order_by_clause;
+
     $stmt = $mysqli->prepare($sql);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
+        // 提出率がNULLの場合に0を設定
+        if ($row['submission_rate'] === null) {
+            $row['submission_rate'] = 0;
+        }
+
         $users[] = $row;
     }
     $stmt->close();
@@ -92,7 +114,8 @@ try {
             align-items: center;
             gap: 20px;
             margin-bottom: 30px;
-            padding-left: 100px;
+            width: 1000px; /* リストの幅に合わせる */
+            margin: 0 auto 30px; /* 中央寄せと下マージン */
         }
         .delete-button {
             background-color: #DC5C5E;
@@ -134,12 +157,12 @@ try {
 
         /* User List */
         .user-list-container {
-            padding: 0 100px;
+            /* paddingを削除し、リスト自体で幅とマージンを管理 */
         }
         .user-list-header, .user-list-row {
             display: flex;
             align-items: center;
-            width: 800px;
+            width: 1000px; /* 幅を広げる */
             height: 36px;
             background: #E0E7ED;
             border-radius: 10px;
@@ -162,27 +185,41 @@ try {
             box-sizing: border-box;
         }
         .col-checkbox {
-            flex-basis: 60px;
+            flex-basis: 50px;
         }
         .col-id {
-            flex-basis: 151px;
+            flex-basis: 120px;
         }
         .col-name {
-            flex-basis: 163px;
+            flex-basis: 150px;
             border-left: 1px solid #FFFFFF;
             border-right: 1px solid #FFFFFF;
         }
         .col-email {
             flex-grow: 1;
             justify-content: flex-start;
-            padding-left: 20px;
+            padding-left: 15px;
+            border-right: 1px solid #FFFFFF;
+        }
+        .col-submission-count {
+            flex-basis: 100px;
+            border-right: 1px solid #FFFFFF;
+        }
+        .col-submission-rate {
+            flex-basis: 80px;
         }
 
         .user-list-header .col-id,
         .user-list-header .col-name,
-        .user-list-header .col-email {
+        .user-list-header .col-email,
+        .user-list-header .col-submission-count,
+        .user-list-header .col-submission-rate {
             justify-content: center;
             padding-left: 0;
+        }
+        .user-list-row .col-name, .user-list-row .col-email {
+            justify-content: flex-start;
+            padding-left: 15px;
         }
 
         input[type="checkbox"] {
@@ -388,6 +425,8 @@ try {
                 <div class="col col-id">学籍番号</div>
                 <div class="col col-name">氏名</div>
                 <div class="col col-email">メールアドレス</div>
+                <div class="col col-submission-count">提出日数</div>
+                <div class="col col-submission-rate">提出率</div>
             </div>
 
             <!-- User Rows -->
@@ -405,6 +444,8 @@ try {
                             <div class="col col-id"><?php echo htmlspecialchars($user['user_id'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="col col-name"><?php echo htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="col col-email"><?php echo $user['email'] ? htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8') : '登録されていません'; ?></div>
+                            <div class="col col-submission-count"><?php echo htmlspecialchars($user['submission_count'] ?? 0, ENT_QUOTES, 'UTF-8'); ?></div>
+                            <div class="col col-submission-rate"><?php echo htmlspecialchars($user['submission_rate'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>%</div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>

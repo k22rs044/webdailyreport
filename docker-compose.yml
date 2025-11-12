@@ -21,7 +21,10 @@ services:
       UPLOAD_LIMIT: 2G
 
   apache:
-    build: container/dockerfile-folder/apache
+    build:
+      context: .  # <<--- ビルドコンテキストをプロジェクトルート (.) に変更
+      dockerfile: container/dockerfile-folder/apache/Dockerfile # <<--- Dockerfileの相対パスを指定 
+    #build: container/dockerfile-folder/apache
     container_name: apache_php
     volumes:
       #- ./htdocs:/var/www/html

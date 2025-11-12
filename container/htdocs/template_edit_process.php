@@ -29,7 +29,7 @@ if (empty($template_id) || empty($title) || empty($content)) {
 
 try {
     // テンプレートを更新するSQL。user_idも条件に含めることで、他人のテンプレートを編集できないようにする
-    $sql = "UPDATE Detail_Template SET title = ?, content = ? WHERE template_id = ? AND user_id = ?";
+    $sql = "UPDATE Detail_Template SET title = ?, content = ?, created_at = CURDATE() WHERE template_id = ? AND user_id = ?";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('ssss', $title, $content, $template_id, $user_id);
     $stmt->execute();

@@ -212,7 +212,31 @@ for ($i = 0; $i < 7; $i++) {
 // Y軸の最大値を決める (最低でも4時間=240分、最大作業時間がそれ以上ならそれに合わせる)
 $y_axis_max_minutes = max(240, $max_work_minutes_in_week);
 
+// --- カレンダー生成ロジック ---
+$today_for_calendar = new DateTime();
+$year = (int)$today_for_calendar->format('Y');
+$month = (int)$today_for_calendar->format('m');
+$today_day = (int)$today_for_calendar->format('d');
 
+$calendar_month_str = $today_for_calendar->format('F Y'); // "September 2025"
+
+$first_day_of_month = new DateTime("$year-$month-01");
+$first_day_weekday = (int)$first_day_of_month->format('w'); // 0 (Sun) - 6 (Sat)
+$days_in_month = (int)$first_day_of_month->format('t');
+
+$calendar_days = [];
+// 前月の日付
+$last_day_of_prev_month = (clone $first_day_of_month)->modify('-1 day');
+$prev_month_days_to_show = $first_day_weekday;
+for ($i = 0; $i < $prev_month_days_to_show; $i++) {
+    $day = $last_day_of_prev_month->format('d') - ($prev_month_days_to_show - 1 - $i);
+    $calendar_days[] = ['day' => $day, 'class' => 'day-inactive'];
+}
+// 今月の日付
+for ($day = 1; $day <= $days_in_month; $day++) {
+    $class = ($day == $today_day) ? 'day-active' : '';
+    $calendar_days[] = ['day' => $day, 'class' => $class];
+}
 
 ?>
 <!DOCTYPE html>
@@ -671,17 +695,17 @@ $y_axis_max_minutes = max(240, $max_work_minutes_in_week);
                 <div class="calendar-card">
                     <div class="calendar-header">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 18L9 12L15 6" stroke="#AFAFAF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        <div class="calendar-month">September 2025</div>
+                        <div class="calendar-month"><?php echo htmlspecialchars($calendar_month_str, ENT_QUOTES, 'UTF-8'); ?></div>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18L15 12L9 6" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
                     <div class="calendar-grid">
                         <div class="day-name">Su</div><div class="day-name">Mo</div><div class="day-name">Tu</div><div class="day-name">We</div><div class="day-name">Th</div><div class="day-name">Fr</div><div class="day-name">Sa</div>
-                        <div class="day-number day-inactive">1</div><div class="day-number">2</div><div class="day-number">3</div><div class="day-number">4</div><div class="day-number">5</div><div class="day-number">6</div><div class="day-number">7</div>
-                        <div class="day-number">8</div><div class="day-number">9</div><div class="day-number">10</div><div class="day-number">11</div><div class="day-number">12</div><div class="day-number">13</div><div class="day-number">14</div>
-                        <div class="day-number">15</div><div class="day-number">16</div><div class="day-number">17</div><div class="day-number day-active">18</div><div class="day-number">19</div><div class="day-number">20</div><div class="day-number">21</div>
-                        <div class="day-number">22</div><div class="day-number">23</div><div class="day-number">24</div><div class="day-number">25</div><div class="day-number">26</div><div class="day-number">27</div><div class="day-number">28</div>
-                        <div class="day-number">29</div><div class="day-number">30</div><div class="day-number day-inactive">1</div><div class="day-number day-inactive">2</div><div class="day-number day-inactive">3</div><div class="day-number day-inactive">4</div><div class="day-number day-inactive">5</div>
-                    </div>
+                        <?php
+                            $day_count = count($calendar_days);
+                            for ($i = 0; $i < $day_count; $i++) {
+                                echo '<div class="day-number ' . $calendar_days[$i]['class'] . '">' . $calendar_days[$i]['day'] . '</div>';
+                            }
+                        ?></div>
                 </div>
             </aside>
 
@@ -721,7 +745,7 @@ $y_axis_max_minutes = max(240, $max_work_minutes_in_week);
                         <input type="hidden" id="work-time-seconds" name="work_time_seconds" value="0">
 
                         <!-- 登録ボタンを追加 -->
-                        <button type="submit" class="form-button large">登録</button>
+                        <button type="submit" class="form-button large" <?php if ($is_report_submitted) echo 'disabled'; ?>>登録</button>
 
                 </div>
             </section>
@@ -869,6 +893,7 @@ $y_axis_max_minutes = max(240, $max_work_minutes_in_week);
             const nextWorkSummaryInput = document.getElementById('next-work-summary');
             const workTimeInput = document.getElementById('work-time-input'); // メイン画面の表示用
             const reportForm = document.getElementById('report-form');
+            const submitButton = reportForm.querySelector('button[type="submit"]');
 
             // サーバーへ送信するための隠しフィールド
             const startHidden = document.getElementById('work-start-time'); // HTMLに追加
@@ -1063,6 +1088,7 @@ $y_axis_max_minutes = max(240, $max_work_minutes_in_week);
                     if (response.ok) {
                         // 登録完了ポップアップを表示
                         registrationPopup.style.display = 'flex';
+                        submitButton.disabled = true; // 登録ボタンを無効化
                         // フォームをリセット
                         reportForm.reset(); // 表示されているフォームの値をリセット
                         // 内部の状態もリセット
@@ -1073,6 +1099,7 @@ $y_axis_max_minutes = max(240, $max_work_minutes_in_week);
                         // 2秒後にポップアップを閉じる
                         setTimeout(() => {
                             registrationPopup.style.display = 'none';
+                            window.location.reload(); // 画面をリロード
                         }, 2000);
                     } else {
                         displayMessage('登録に失敗しました。', 'error');

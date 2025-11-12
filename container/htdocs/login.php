@@ -124,19 +124,6 @@ unset($_SESSION['error']); // エラーメッセージを一度表示したら�
             opacity: 0.9;
         }
 
-        .admin-button {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 97px;
-            height: 35px;
-            background: #D9D9D9;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #000000;
-            text-decoration: none;
-        }
 
         .error-message {
             color: #D8000C; /* 赤色 */
