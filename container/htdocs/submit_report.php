@@ -14,7 +14,7 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php'); 
+    header('Location: top.php'); 
     exit;
 }
 
@@ -38,7 +38,7 @@ $report_id = $user_id . '_' . $report_date;
 // 簡易バリデーション (DB制約に合わせる)
 if (empty($task) || empty($detail) || empty($user_id)) {
     // $_SESSION['error'] = '必須項目が不足しています。';
-    header('Location: index.php'); 
+    header('Location: top.php'); 
     exit;
 }
 

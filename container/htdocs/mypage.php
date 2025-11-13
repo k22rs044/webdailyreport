@@ -4,7 +4,7 @@ require_once 'db_config.php';
 
 // ログインしていない場合はログインページにリダイレクト
 if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+    header('Location: index.php');
     exit;
 }
 

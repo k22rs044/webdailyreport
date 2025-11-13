@@ -5,7 +5,7 @@ require_once 'db_config.php';
 // ログインしていない場合はログインページにリダイレクト（開発中はコメントアウト）
 
 if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+    header('Location: index.php');
     exit;
 }
 $user_id = $_SESSION['user_id'];
@@ -1047,36 +1047,9 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 displayMessage(`作業時間 ${workTimeInput.value} を設定しました。`, 'info');
             });
 
-            // --- Registration Form Submission ---
+            // --- 日報登録処理 ---
             const registrationPopup = document.getElementById('registration-popup-overlay');
-            reportForm.addEventListener('submit', async e => {
-                e.preventDefault(); // デフォルトのフォーム送信をキャンセル
-
-                // 必須項目チェック
-                const task = workSummaryInput.value.trim();
-                const detail = workDetailsTextarea.value.trim();
-                
-                if (task === '' || detail === '') {
-                    displayMessage('作業概要と作業詳細は必須項目です。', 'error');
-                    return;
-                }
-                
-
-                // タイマーが動いている場合は強制的に停止し、値を確定させる
-                if (timerInterval) {
-                    endHidden.value = getCurrentTimeFormatted();
-                    secondsHidden.value = totalSeconds;
-                    workTimeInput.value = formatTime(totalSeconds);
-                    timerInterval = null;
-                    isPaused = false;
-
-                    // ポップアップが開いていたら閉じる
-                    timerPopup.style.display = 'none'; 
-                    displayMessage(`登録前にタイマーを停止し、作業時間 ${workTimeInput.value} を確定しました。`, 'info');
-                }
-                
-                // 登録完了ポップアップ（submit_report.phpでリダイレクトするため、ここでは機能させません）
-
+            const submitReport = async () => {
                 const formData = new FormData(reportForm);
 
                 try {
@@ -1106,6 +1079,59 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                     }
                 } catch (error) {
                     displayMessage('通信エラーが発生しました。', 'error');
+                }
+            };
+
+            // --- イベントリスナー ---
+
+            // 「登録」ボタンクリック時
+            reportForm.addEventListener('submit', async e => {
+                e.preventDefault(); // デフォルトのフォーム送信をキャンセル
+
+                // 必須項目チェック
+                const task = workSummaryInput.value.trim();
+                const detail = workDetailsTextarea.value.trim();
+                if (task === '' || detail === '') {
+                    displayMessage('作業概要と作業詳細は必須項目です。', 'error');
+                    return;
+                }
+
+                // タイマーが動いている場合は強制的に停止し、値を確定させる
+                if (timerInterval) {
+                    stopTimer();
+                    endHidden.value = getCurrentTimeFormatted();
+                    secondsHidden.value = totalSeconds;
+                    workTimeInput.value = formatTime(totalSeconds);
+                    timerInterval = null;
+                    isPaused = false;
+                    timerPopup.style.display = 'none'; 
+                    displayMessage(`登録前にタイマーを停止し、作業時間 ${workTimeInput.value} を確定しました。`, 'info');
+                }
+                
+                await submitReport();
+            });
+
+            // タイマーの「終了」ボタンクリック時
+            endBtn.addEventListener('click', async () => {
+                // タイマーを停止し、ポップアップを閉じる
+                stopTimer();
+                timerPopup.style.display = 'none';
+
+                // 終了時刻と作業時間を隠しフィールドに設定
+                endHidden.value = getCurrentTimeFormatted();
+                secondsHidden.value = totalSeconds;
+                workTimeInput.value = formatTime(totalSeconds); // 表示にも反映
+                displayMessage(`作業時間 ${workTimeInput.value} を記録しました。`, 'info');
+
+                // タイマーの状態をリセット
+                timerInterval = null;
+                isPaused = false;
+
+                // 必須項目が入力されていれば登録処理を実行
+                const task = workSummaryInput.value.trim();
+                const detail = workDetailsTextarea.value.trim();
+                if (task !== '' && detail !== '') {
+                    await submitReport(); // 登録処理を実行
                 }
             });
 
