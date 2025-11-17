@@ -211,6 +211,146 @@ try {
         }
         .popup-cancel-button { background-color: #8E8B8B; }
         .popup-submit-button { background-color: #5C9EDC; }
+
+         /* Custom Scrollbar for Notification List (Seek Bar) */
+        .notification-popup-window .popup-list::-webkit-scrollbar {
+            width: 8px; /* スクロールバーの幅 */
+        }
+
+        .notification-popup-window .popup-list::-webkit-scrollbar-track {
+            background: #f1f1f1; /* トラックの背景色 */
+            border-radius: 10px;
+        }
+
+        .notification-popup-window .popup-list::-webkit-scrollbar-thumb {
+            background: #888; /* サム（ドラッグする部分）の色 */
+            border-radius: 10px;
+        }
+
+        .notification-popup-window .popup-list::-webkit-scrollbar-thumb:hover {
+            background: #555; /* サムのホバー時の色 */
+        }
+
+        /* Notification Popup */
+        /* Based on "通知p" and "Rectangle 5563" */
+        .notification-popup-window {
+            width: 460px;
+            height: 500px; /* From Rectangle 5563 */
+            
+            /* Existing background, border, border-radius are correct */
+            /* background: #FFFFFF; */
+            /* border: 5px solid #5C9EDC; */
+            /* border-radius: 10px; */
+
+            /* Override default popup-window padding for absolute positioning of children */
+            padding: 0; 
+            
+            /* Ensure children are positioned relative to this */
+            position: relative; /* Already set by .popup-window */
+            
+            /* Remove flex properties from parent as children are absolutely positioned */
+            display: block; /* Override display: flex */
+            align-items: unset; /* Override align-items */
+            flex-direction: unset; /* Override flex-direction */
+        }
+
+        .notification-popup-window .popup-title {
+            /* From "通知" */
+            position: absolute;
+            width: 100px;
+            height: 24px;
+            left: 160px;
+            top: 10px;
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400;
+            font-size: 20px;
+            line-height: 24px;
+            text-align: center;
+            color: #000000;
+            margin-bottom: 0; /* Remove default margin */
+        }
+
+        .notification-popup-window .popup-list {
+            /* From "Group 60" */
+            position: absolute;
+            width: 400px;
+            height: 350px;
+            left: calc(50% - 400px/2); /* Centered horizontally */
+            top: 72px;
+            
+            /* Keep existing flex properties for list items */
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            padding: 0; /* Remove default padding */
+        }
+        /* Popup Styles (from top.php) */
+        .popup-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .popup-window { position: relative; background: #FFFFFF; border: 5px solid #5C9EDC; border-radius: 10px; box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .popup-title { font-size: 16px; line-height: 19px; text-align: center; color: #000000; margin-bottom: 20px; }
+        .popup-list { width: 100%; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 0 10px; }
+        .popup-list-item { 
+            width: 100%; 
+            height: 50px; 
+            background: #E0E7ED; 
+            border-radius: 10px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 16px; 
+            color: #8E8B8B; 
+            cursor: pointer; 
+        }
+        .popup-list-item:hover { background-color: #d1d9e0; }
+        .popup-close-button { margin-top: auto; padding: 8px 25px; background: #8CBAE6; border: none; border-radius: 7px; font-size: 16px; cursor: pointer; }
+        
+        .notification-popup-window .popup-list-item { 
+            /* From "Rectangle 5489", "Rectangle 5490" */
+            width: 400px; /* Fixed width for each item */
+            height: 50px;
+            background: #E0E7ED;
+            border-radius: 10px;
+            
+            /* Text styles from "コメントがきた日報の日付を表示" */
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400;
+            font-size: 13px;
+            line-height: 140%; /* または22px */
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #8E8B8B;
+
+            /* Override existing styles */
+            justify-content: center; /* Center content horizontally within the item */
+            padding: 0; /* Remove default padding */
+            cursor: pointer; /* Already there */
+        }
+        .notification-popup-window .popup-list-item span { font-weight: bold; color: #5C9EDC; margin: 0 5px; }
+        .notification-popup-window .popup-close-button {
+            position: absolute;
+            bottom: 10px; /* Adjust as needed */
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 0; /* Remove default margin-top: auto */
+        }
+
+        .popup-list-item:hover { background-color: #d1d9e0; }
+        .popup-close-button { margin-top: auto; padding: 8px 25px; background: #8CBAE6; border: none; border-radius: 7px; font-size: 16px; cursor: pointer; }
+
+        /* Password Change Popup Styles */
+        .password-change-popup {
+            width: 538px;
+            height: 353px;
+            background: #E0E7ED;
+            border: 5px solid #D04141;
+            border-radius: 10px;
+            box-sizing: border-box;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
@@ -230,7 +370,7 @@ try {
                         <a href="admin.php">管理者画面</a>
                     <?php endif; ?>
                 </nav>
-                <div class="notification-bell">
+                <div id="notification-bell-icon" class="notification-bell" style="cursor: pointer; position: relative;">
                     <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12.5 2.8C15.8152 2.8 18.9946 4.10678 21.3891 6.50126C23.7835 8.89574 25.0903 12.0752 25.0903 15.3903C25.0903 20.3903 25.0903 22.5903 25.0903 22.5903H-0.090332C-0.090332 22.5903 -0.090332 20.3903 -0.090332 15.3903C-0.090332 12.0752 1.21645 8.89574 3.61093 6.50126C6.00541 4.10678 9.18484 2.8 12.5 2.8Z" fill="white"/>
                         <path d="M16.5 24.8C16.5 25.5935 16.1839 26.3529 15.6213 26.9155C15.0587 27.4781 14.2993 27.8 13.5 27.8C12.7007 27.8 11.9413 27.4781 11.3787 26.9155C10.8161 26.3529 10.5 25.5935 10.5 24.8H16.5Z" fill="white"/>
@@ -282,10 +422,22 @@ try {
                 </form>
             </div>
         </div>
+
+        <!-- Notification Popup -->
+        <div id="notification-popup-overlay" class="popup-overlay">
+            <div class="popup-window notification-popup-window">
+                <h3 class="popup-title">新しい通知</h3>
+                <div id="notification-list" class="popup-list">
+                    <div class="popup-list-item">通知はありません</div>
+                </div>
+                <button class="popup-close-button">閉じる</button>
+            </div>
+        </div>
     </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // --- New Task Popup Logic ---
         const popup = document.getElementById('new-task-popup');
         const showPopupBtn = document.getElementById('show-new-task-popup');
         const cancelBtn = document.getElementById('cancel-new-task');
@@ -335,6 +487,78 @@ try {
                 alert('登録中にエラーが発生しました。');
             }
         });
+
+        // --- 通知ポップアップ機能 ---
+        const notificationBell = document.getElementById('notification-bell-icon');
+        const notificationPopup = document.getElementById('notification-popup-overlay');
+        const notificationList = document.getElementById('notification-list');
+        const closeNotificationBtn = notificationPopup.querySelector('.popup-close-button');
+
+        // Close the notification popup
+        closeNotificationBtn.addEventListener('click', () => {
+            notificationPopup.style.display = 'none';
+        });
+
+        // ポップアップの外側（オーバーレイ）をクリックしたときに閉じる
+        notificationPopup.addEventListener('click', (e) => {
+            if (e.target === notificationPopup) {
+                notificationPopup.style.display = 'none';
+            }
+        });
+
+        if (notificationBell) {
+            notificationBell.addEventListener('click', async () => {
+                console.log("ベルアイコンがクリックされました。");
+                notificationPopup.style.display = 'flex';
+                
+                try {
+                    const response = await fetch('get_notifications.php');
+                    if (!response.ok) throw new Error(`サーバーエラー: ${response.status}`);
+                    
+                    const result = await response.json();
+                    console.log("通知APIからのレスポンス:", result);
+
+                    if (result.success && result.notifications.length > 0) {
+                        notificationList.innerHTML = '';
+                        const commentIds = [];
+
+                        result.notifications.forEach(n => {
+                            const item = document.createElement('a');
+                            item.href = `reports_detail.php?id=${n.report_id}`;
+                            item.className = 'popup-list-item';
+                            const reportDate = new Date(n.report_date).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' });
+
+                            if (n.is_admin_view) {
+                                item.innerHTML = `<span>${n.report_owner_name}</span>さんの日報に<span>${n.commenter_name}</span>さんがコメントしました。`;
+                            } else {
+                                item.innerHTML = `${reportDate}の日報に<span>${n.commenter_name}</span>さんからコメントがありました。`;
+                            }
+
+                            item.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                markNotificationsAsRead([n.comment_id]);
+                                window.location.href = item.href;
+                            });
+
+                            notificationList.appendChild(item);
+                            commentIds.push(n.comment_id);
+                        });
+                    } else {
+                        notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
+                    }
+                } catch (error) {
+                    console.error('通知の取得に失敗しました:', error);
+                    notificationList.innerHTML = '<div class="popup-list-item">通知の取得に失敗しました</div>';
+                }
+            });
+        }
+
+        async function markNotificationsAsRead(commentIds) {
+            if (commentIds.length === 0) return;
+            const formData = new FormData();
+            formData.append('comment_ids', JSON.stringify(commentIds));
+            if (navigator.sendBeacon) { navigator.sendBeacon('mark_notifications_read.php', formData); } else { try { await fetch('mark_notifications_read.php', { method: 'POST', body: formData, keepalive: true }); } catch (error) { console.error('通知の既読化に失敗しました:', error); } }
+        }
     });
     </script>
 </body>
