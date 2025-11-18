@@ -27,29 +27,48 @@ if (empty($report_id) || empty($comment_content)) {
 }
 
 try {
-    // バリデーション: report_idがReportテーブルに存在するか確認
-    $sql_report_check = "SELECT report_id FROM Report WHERE report_id = ?";
+    $mysqli->begin_transaction();
+
+    // バリデーションと日報所有者の取得: report_idがReportテーブルに存在するか確認
+    $sql_report_check = "SELECT user_id FROM Report WHERE report_id = ?";
     $stmt_report_check = $mysqli->prepare($sql_report_check);
     $stmt_report_check->bind_param('s', $report_id);
     $stmt_report_check->execute();
-    $stmt_report_check->store_result();
-    if ($stmt_report_check->num_rows === 0) {
+    $report_owner_result = $stmt_report_check->get_result();
+    $report_owner_row = $report_owner_result->fetch_assoc();
+    
+    if (!$report_owner_row) {
         $stmt_report_check->close();
+        $mysqli->rollback();
         echo json_encode(['success' => false, 'message' => '対象の日報が存在しません。']);
         exit();
     }
+    $report_owner_id = $report_owner_row['user_id'];
     $stmt_report_check->close();
 
 
     // コメントをデータベースに挿入
-    $sql = "INSERT INTO Comment (report_id, user_id, comment_content, comment_at) VALUES (?, ?, ?, NOW())";
-    $stmt = $mysqli->prepare($sql);
-    if ($stmt === false) {
-        throw new Exception("プリペアに失敗: " . $mysqli->error);
+    $sql_comment = "INSERT INTO Comment (report_id, user_id, comment_content, comment_at) VALUES (?, ?, ?, NOW())";
+    $stmt_comment = $mysqli->prepare($sql_comment);
+    if ($stmt_comment === false) throw new Exception("Comment Insert Prepare Failed: " . $mysqli->error);
+    $stmt_comment->bind_param('sss', $report_id, $user_id, $comment_content);
+    $stmt_comment->execute();
+    $comment_id = $stmt_comment->insert_id; // 最後に挿入されたコメントIDを取得
+    $stmt_comment->close();
+
+    // 通知テーブルにレコードを挿入 (自分自身へのコメントは通知しない)
+    if ($user_id !== $report_owner_id) {
+        $sql_notification = "INSERT INTO Notification (notification_id, user_id, report_id, created_at, is_read) VALUES (?, ?, ?, NOW(), 0)";
+        $stmt_notification = $mysqli->prepare($sql_notification);
+        if ($stmt_notification === false) throw new Exception("Notification Insert Prepare Failed: " . $mysqli->error);
+        // notification_id には comment_id を使用する
+        $stmt_notification->bind_param('iss', $comment_id, $report_owner_id, $report_id);
+        $stmt_notification->execute();
+        $stmt_notification->close();
     }
-    $stmt->bind_param('sss', $report_id, $user_id, $comment_content);
-    $stmt->execute();
-    $stmt->close();
+
+    // トランザクションをコミット
+    $mysqli->commit();
 
     // コメント投稿者の名前を取得 (レスポンス用)
     $author_name = "不明なユーザー";
@@ -71,6 +90,7 @@ try {
     ]);
 
 } catch (Exception $e) {
+    $mysqli->rollback();
     // エラーの詳細をログに記録
     $error_message = "Comment Submission Error: " . $e->getMessage();
     error_log($error_message);

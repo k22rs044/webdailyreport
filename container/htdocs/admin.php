@@ -3,14 +3,31 @@ session_start();
 require_once 'db_config.php';
 
 // 管理者でない場合はTOPページにリダイレクト
-// if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-//     header('Location: top.php');
-//     exit;
-// }
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    header('Location: top.php');
+    exit;
+}
 
 // 並び替え条件の取得
-$sort_order = $_GET['sort'] ?? 'asc'; // デフォルトは昇順
-$order_by_clause = 'ORDER BY user_id ' . ($sort_order === 'desc' ? 'DESC' : 'ASC');
+$sort_by = $_GET['sort_by'] ?? 'user_id'; // デフォルトの並び替え項目
+$sort_order = $_GET['sort_order'] ?? 'asc'; // デフォルトの並び替え順序
+
+// 並び替え項目が許可されたリストに含まれているか検証（SQLインジェクション対策）
+$allowed_sort_columns = ['user_id', 'submission_count', 'submission_rate', 'days_since_last_report'];
+if (!in_array($sort_by, $allowed_sort_columns)) {
+    $sort_by = 'user_id'; // 不正な値の場合はデフォルトに戻す
+}
+
+// 並び替え順序が asc または desc であることを確認
+$sort_order = strtolower($sort_order) === 'desc' ? 'DESC' : 'ASC';
+
+// ORDER BY句を構築
+$order_by_clause = "ORDER BY {$sort_by} {$sort_order}";
+
+// 提出率や最終提出日がNULLの場合の並び順を制御
+if ($sort_by === 'submission_rate' || $sort_by === 'days_since_last_report') {
+    $order_by_clause = "ORDER BY CASE WHEN {$sort_by} IS NULL THEN 1 ELSE 0 END, {$sort_by} {$sort_order}";
+}
 
 
 $users = [];
@@ -20,6 +37,8 @@ try {
                 u.user_id, 
                 u.name, 
                 u.email,
+                u.role,
+                DATEDIFF(CURDATE(), (SELECT MAX(report_date) FROM Report WHERE user_id = u.user_id)) AS days_since_last_report,
                 (SELECT COUNT(report_id) FROM Report WHERE user_id = u.user_id) AS submission_count,
                 (
                     SELECT
@@ -41,6 +60,9 @@ try {
         // 提出率がNULLの場合に0を設定
         if ($row['submission_rate'] === null) {
             $row['submission_rate'] = 0;
+        }
+        if ($row['days_since_last_report'] === null) {
+            $row['days_since_last_report'] = 'N/A';
         }
 
         $users[] = $row;
@@ -100,6 +122,10 @@ try {
             align-items: center;
             gap: 50px;
         }
+        .notification-bell { cursor: pointer; position: relative; }
+        .user-role-select {
+            width: 80px; /* ドロップダウンの幅を調整 */
+        }
 
         /* Main Content */
         .main-container {
@@ -107,14 +133,13 @@ try {
             margin: 0 auto;
             padding: 30px 0;
         }
-
         /* Control Bar */
         .control-bar {
             display: flex;
             align-items: center;
             gap: 20px;
             margin-bottom: 30px;
-            width: 1000px; /* リストの幅に合わせる */
+            width: 1200px;
             margin: 0 auto 30px; /* 中央寄せと下マージン */
         }
         .delete-button {
@@ -162,7 +187,7 @@ try {
         .user-list-header, .user-list-row {
             display: flex;
             align-items: center;
-            width: 1000px; /* 幅を広げる */
+            width: 1080px; /* 幅を調整 */
             height: 36px;
             background: #E0E7ED;
             border-radius: 10px;
@@ -191,14 +216,19 @@ try {
             flex-basis: 120px;
         }
         .col-name {
-            flex-basis: 150px;
+            flex-basis: 150px; /* 以前の変更を元に戻し、メールアドレスの幅を確保 */
             border-left: 1px solid #FFFFFF;
             border-right: 1px solid #FFFFFF;
         }
         .col-email {
-            flex-grow: 1;
+            /* flex-grow: 1; を削除 */
+            flex-basis: 400px; /* 固定幅を指定 */
             justify-content: flex-start;
             padding-left: 15px;
+            border-right: 1px solid #FFFFFF;
+        }
+        .col-role {
+            flex-basis: 100px;
             border-right: 1px solid #FFFFFF;
         }
         .col-submission-count {
@@ -207,13 +237,19 @@ try {
         }
         .col-submission-rate {
             flex-basis: 80px;
+            border-left: 1px solid #FFFFFF;
+        }
+        .col-last-report {
+            flex-basis: 120px;
+            border-left: 1px solid #FFFFFF;
         }
 
         .user-list-header .col-id,
         .user-list-header .col-name,
         .user-list-header .col-email,
         .user-list-header .col-submission-count,
-        .user-list-header .col-submission-rate {
+        .user-list-header .col-submission-rate,
+        .user-list-header .col-last-report {
             justify-content: center;
             padding-left: 0;
         }
@@ -370,6 +406,101 @@ try {
             display: inline;
         }
 
+        /* Notification Popup Styles (from other pages) */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .popup-window {
+            position: relative;
+            background: #FFFFFF;
+            border: 5px solid #5C9EDC;
+            border-radius: 10px;
+            box-sizing: border-box;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .notification-popup-window {
+            width: 460px;
+            height: 500px;
+            padding: 0;
+            display: block;
+            align-items: unset;
+            flex-direction: unset;
+        }
+        .notification-popup-window .popup-title {
+            position: absolute;
+            width: 100px;
+            height: 24px;
+            left: 165px;
+            top: 10px;
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400;
+            font-size: 20px;
+            line-height: 24px;
+            text-align: center;
+            color: #000000;
+            margin-bottom: 0;
+        }
+        .notification-popup-window .popup-list {
+            position: absolute;
+            width: 400px;
+            height: 350px;
+            left: calc(50% - 400px/2);
+            top: 72px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            padding: 0;
+        }
+        .notification-popup-window .popup-list-item {
+            width: 400px;
+            height: 50px;
+            background: #E0E7ED;
+            border-radius: 10px;
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400;
+            font-size: 13px;
+            line-height: 140%;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #8E8B8B;
+            justify-content: center;
+            padding: 0;
+            cursor: pointer;
+        }
+        .notification-popup-window .popup-list-item:hover {
+            background-color: #d1d9e0;
+        }
+        .notification-popup-window .popup-list-item span {
+            font-weight: bold;
+            color: #5C9EDC;
+            margin: 0 5px;
+        }
+        .notification-popup-window .popup-close-button {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 0;
+            padding: 8px 25px; background: #8CBAE6; border: none; border-radius: 7px; font-size: 16px; cursor: pointer;
+        }
+
+
     </style>
 </head>
 <body>
@@ -388,7 +519,7 @@ try {
                         <a href="admin.php">管理者画面</a>
                     <?php endif; ?>
                 </nav>
-                <div class="notification-bell">
+                <div id="notification-bell-icon" class="notification-bell">
                     <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12.5 2.8C15.8152 2.8 18.9946 4.10678 21.3891 6.50126C23.7835 8.89574 25.0903 12.0752 25.0903 15.3903C25.0903 20.3903 25.0903 22.5903 25.0903 22.5903H-0.090332C-0.090332 22.5903 -0.090332 20.3903 -0.090332 15.3903C-0.090332 12.0752 1.21645 8.89574 3.61093 6.50126C6.00541 4.10678 9.18484 2.8 12.5 2.8Z" fill="white"/>
                         <path d="M16.5 24.8C16.5 25.5935 16.1839 26.3529 15.6213 26.9155C15.0587 27.4781 14.2993 27.8 13.5 27.8C12.7007 27.8 11.9413 27.4781 11.3787 26.9155C10.8161 26.3529 10.5 25.5935 10.5 24.8H16.5Z" fill="white"/>
@@ -402,14 +533,20 @@ try {
     <div class="main-container">
         <div class="control-bar">
             <a href="#" id="show-delete-popup" class="delete-button">削除</a>
-            <form id="sort-form" action="admin.php" method="GET">
+            <form id="sort-form" action="admin.php" method="GET" class="sort-bar">
                 <div class="sort-bar">
                     <span>並び替え</span>
+                    <select name="sort_by" onchange="this.form.submit()">
+                        <option value="user_id" <?php if ($sort_by === 'user_id') echo 'selected'; ?>>学籍番号</option>
+                        <option value="submission_count" <?php if ($sort_by === 'submission_count') echo 'selected'; ?>>提出日数</option>
+                        <option value="submission_rate" <?php if ($sort_by === 'submission_rate') echo 'selected'; ?>>提出率</option>
+                        <option value="days_since_last_report" <?php if ($sort_by === 'days_since_last_report') echo 'selected'; ?>>最終提出日</option>
+                    </select>
                     <label>
-                        <input type="radio" name="sort" value="asc" onchange="this.form.submit()" <?php if ($sort_order === 'asc') echo 'checked'; ?>> 昇順
+                        <input type="radio" name="sort_order" value="asc" onchange="this.form.submit()" <?php if ($sort_order === 'ASC') echo 'checked'; ?>> 昇順
                     </label>
                     <label>
-                        <input type="radio" name="sort" value="desc" onchange="this.form.submit()" <?php if ($sort_order === 'desc') echo 'checked'; ?>> 降順
+                        <input type="radio" name="sort_order" value="desc" onchange="this.form.submit()" <?php if ($sort_order === 'DESC') echo 'checked'; ?>> 降順
                     </label>
                 </div>
             </form>
@@ -425,8 +562,10 @@ try {
                 <div class="col col-id">学籍番号</div>
                 <div class="col col-name">氏名</div>
                 <div class="col col-email">メールアドレス</div>
+                <div class="col col-role">権限</div>
                 <div class="col col-submission-count">提出日数</div>
                 <div class="col col-submission-rate">提出率</div>
+                <div class="col col-last-report">最終提出日</div>
             </div>
 
             <!-- User Rows -->
@@ -444,8 +583,15 @@ try {
                             <div class="col col-id"><?php echo htmlspecialchars($user['user_id'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="col col-name"><?php echo htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="col col-email"><?php echo $user['email'] ? htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8') : '登録されていません'; ?></div>
+                            <div class="col col-role">
+                                <select class="user-role-select" data-user-id="<?php echo htmlspecialchars($user['user_id'], ENT_QUOTES, 'UTF-8'); ?>" data-original-value="<?php echo htmlspecialchars($user['role'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    <option value="user" <?php if ($user['role'] === 'user') echo 'selected'; ?>>学生</option>
+                                    <option value="admin" <?php if ($user['role'] === 'admin') echo 'selected'; ?>>管理者</option>
+                                </select>
+                            </div>
                             <div class="col col-submission-count"><?php echo htmlspecialchars($user['submission_count'] ?? 0, ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="col col-submission-rate"><?php echo htmlspecialchars($user['submission_rate'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>%</div>
+                            <div class="col col-last-report"><?php echo ($user['days_since_last_report'] !== 'N/A') ? htmlspecialchars($user['days_since_last_report'], ENT_QUOTES, 'UTF-8') . '日前' : '未提出'; ?></div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -500,6 +646,17 @@ try {
         </div>
     </div>
 
+    <!-- Notification Popup -->
+    <div id="notification-popup-overlay" class="popup-overlay">
+        <div class="popup-window notification-popup-window">
+            <h3 class="popup-title">新しい通知</h3>
+            <div id="notification-list" class="popup-list">
+                <!-- 通知がここに動的に挿入されます -->
+                <div class="popup-list-item">通知はありません</div>
+            </div>
+            <button class="popup-close-button">閉じる</button>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -615,6 +772,118 @@ try {
                     alert('エラー: ' + result.message);
                 }
             });
+
+            // --- ユーザー権限変更機能 ---
+            const userRoleSelects = document.querySelectorAll('.user-role-select');
+            userRoleSelects.forEach(selectElement => {
+                selectElement.addEventListener('change', async (e) => {
+                    const userId = e.target.dataset.userId;
+                    const newRole = e.target.value;
+
+                    if (!confirm(`ユーザーID: ${userId} の権限を ${newRole === 'admin' ? '管理者' : '学生'} に変更しますか？`)) {
+                        // ユーザーがキャンセルした場合、元の値に戻す
+                        e.target.value = e.target.dataset.originalValue; 
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('user_id', userId);
+                    formData.append('new_role', newRole);
+
+                    try {
+                        const response = await fetch('update_user_role.php', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const result = await response.json();
+
+                        if (result.success) {
+                            alert('権限が正常に更新されました。');
+                        } else {
+                            alert('権限の更新に失敗しました: ' + result.message);
+                        }
+                    } catch (error) {
+                        console.error('Error updating user role:', error);
+                        alert('権限の更新中にエラーが発生しました。');
+                    }
+                });
+                // 初期値を保存しておく
+                selectElement.dataset.originalValue = selectElement.value;
+            });
+
+            // --- 通知ポップアップ機能 ---
+            const notificationBell = document.getElementById('notification-bell-icon');
+            const notificationPopup = document.getElementById('notification-popup-overlay');
+            const notificationList = document.getElementById('notification-list');
+            const closeNotificationBtn = notificationPopup.querySelector('.popup-close-button');
+
+        // Close the notification popup
+        closeNotificationBtn.addEventListener('click', () => {
+            notificationPopup.style.display = 'none';
+        });
+
+        // ポップアップの外側（オーバーレイ）をクリックしたときに閉じる
+        notificationPopup.addEventListener('click', (e) => {
+            if (e.target === notificationPopup) {
+                notificationPopup.style.display = 'none';
+            }
+        });
+
+        if (notificationBell) {
+            notificationBell.addEventListener('click', async () => {
+                notificationPopup.style.display = 'flex';
+                
+                try {
+                    const response = await fetch('get_notifications.php');
+                    if (!response.ok) throw new Error(`サーバーエラー: ${response.status}`);
+                    
+                    const result = await response.json();
+
+                    if (result.success && result.notifications.length > 0) {
+                        notificationList.innerHTML = '';
+                        const commentIds = [];
+
+                        result.notifications.forEach(n => {
+                            const item = document.createElement('a');
+                            item.href = `reports_detail.php?id=${n.report_id}`;
+                            item.className = 'popup-list-item';
+                            const reportDate = new Date(n.report_date).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' });
+
+                            if (n.is_admin_view) {
+                                item.innerHTML = `<span>${n.report_owner_name}</span>さんの日報に<span>${n.commenter_name}</span>さんがコメントしました。`;
+                            } else {
+                                item.innerHTML = `${reportDate}の日報に<span>${n.commenter_name}</span>さんからコメントがありました。`;
+                            }
+
+                            item.addEventListener('click', async (e) => {
+                                e.preventDefault();
+                                await markNotificationsAsRead([n.comment_id]);
+                                item.remove(); // 通知をDOMから削除
+                                if (notificationList.children.length === 0) { // 通知がなくなったらメッセージを表示
+                                    notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
+                                }
+                                window.location.href = item.href;
+                            });
+
+                            notificationList.appendChild(item);
+                            commentIds.push(n.comment_id);
+                        });
+                    } else {
+                        notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
+                    }
+                } catch (error) {
+                    console.error('通知の取得に失敗しました:', error);
+                    notificationList.innerHTML = '<div class="popup-list-item">通知の取得に失敗しました</div>';
+                }
+            });
+        }
+
+        async function markNotificationsAsRead(commentIds) {
+            if (commentIds.length === 0) return;
+            const formData = new FormData();
+            formData.append('comment_ids', JSON.stringify(commentIds));
+            try { await fetch('mark_notifications_read.php', { method: 'POST', body: formData, keepalive: true }); } catch (error) { console.error('通知の既読化に失敗しました:', error); }
+        }
         });
     </script>
 

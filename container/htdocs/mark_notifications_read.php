@@ -26,7 +26,7 @@ if (empty($comment_ids) || !is_array($comment_ids)) {
 try {
     $placeholders = implode(',', array_fill(0, count($comment_ids), '?'));
     $types = str_repeat('i', count($comment_ids));
-    $sql = "UPDATE Comment SET is_read = 1 WHERE comment_id IN ($placeholders)";
+    $sql = "UPDATE Notification SET is_read = 1 WHERE notification_id IN ($placeholders)";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param($types, ...$comment_ids);
     $stmt->execute();

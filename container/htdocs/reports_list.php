@@ -581,11 +581,14 @@ try {
                                 item.innerHTML = `${reportDate}の日報に<span>${n.commenter_name}</span>さんからコメントがありました。`;
                             }
 
-                            // 通知アイテムクリック時に、その通知を既読にする
-                            item.addEventListener('click', (e) => {
+                            item.addEventListener('click', async (e) => {
                                 e.preventDefault(); // 即座のページ遷移を一旦停止
-                                markNotificationsAsRead([n.comment_id]); // この通知だけを既読にする
-                                window.location.href = item.href; // ページ遷移を実行
+                                await markNotificationsAsRead([n.comment_id]); // この通知だけを既読にする
+                                item.remove(); // 通知をDOMから削除
+                                if (notificationList.children.length === 0) { // 通知がなくなったらメッセージを表示
+                                    notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
+                                }
+                                window.location.href = item.href; // 既読処理の完了を待ってからページ遷移を実行
                             });
 
                             notificationList.appendChild(item);

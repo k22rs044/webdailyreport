@@ -847,9 +847,13 @@ if ($selected_id) {
                                 item.innerHTML = `${reportDate}の日報に<span>${n.commenter_name}</span>さんからコメントがありました。`;
                             }
 
-                            item.addEventListener('click', (e) => {
+                            item.addEventListener('click', async (e) => {
                                 e.preventDefault();
                                 markNotificationsAsRead([n.comment_id]);
+                                item.remove(); // 通知をDOMから削除
+                                if (notificationList.children.length === 0) { // 通知がなくなったらメッセージを表示
+                                    notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
+                                }
                                 window.location.href = item.href;
                             });
 
@@ -881,4 +885,3 @@ if ($selected_id) {
 [PROMPT_SUGGESTION]「新規登録」ボタンを押したときに、新しいテンプレートを作成するフォームページを作成してください。[/PROMPT_SUGGESTION]
 [PROMPT_SUGGESTION]認証機能を再度有効にして、正しいIDとパスワードでないとログインできないように戻してください。[/PROMPT_SUGGESTION]
 -->
-

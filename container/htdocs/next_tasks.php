@@ -534,9 +534,13 @@ try {
                                 item.innerHTML = `${reportDate}の日報に<span>${n.commenter_name}</span>さんからコメントがありました。`;
                             }
 
-                            item.addEventListener('click', (e) => {
+                            item.addEventListener('click', async (e) => {
                                 e.preventDefault();
-                                markNotificationsAsRead([n.comment_id]);
+                                await markNotificationsAsRead([n.comment_id]);
+                                item.remove(); // 通知をDOMから削除
+                                if (notificationList.children.length === 0) { // 通知がなくなったらメッセージを表示
+                                    notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
+                                }
                                 window.location.href = item.href;
                             });
 
