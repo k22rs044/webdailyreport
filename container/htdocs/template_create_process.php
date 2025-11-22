@@ -46,7 +46,7 @@ try {
 
     // 3. 新しいテンプレートを挿入
     $sql = "INSERT INTO Detail_Template (template_id, user_id, title, content, created_at) VALUES (?, ?, ?, ?, CURDATE())";
-    $stmt = $mysqli->prepare($sql);
+    $stmt = $mysqli->prepare($sql); //
     if ($stmt === false) throw new Exception("SQLのプリペアに失敗しました: " . $mysqli->error);
 
     $stmt->bind_param('ssss', $new_template_id, $user_id, $title, $content);

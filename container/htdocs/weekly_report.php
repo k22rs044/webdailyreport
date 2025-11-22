@@ -125,16 +125,23 @@ for ($i = 0; $i < 7; $i++) {
 
         .report-row, .report-header {
             width: 1061px;
-            height: 78px;
             background: #E0E7ED;
             border-radius: 10px;
             display: flex;
             align-items: stretch; /* Make columns full height */
         }
 
+        /* ヘッダー行のスタイル */
         .report-header {
+            height: 36px; /* ヘッダーの高さ */
             font-weight: 400;
             font-size: 16px;
+            color: #8E8B8B; /* 文字色を薄くする */
+        }
+
+        /* データ行のスタイル */
+        .report-row {
+            height: 78px; /* データ行の高さ */
         }
 
         .report-col {
@@ -146,12 +153,12 @@ for ($i = 0; $i < 7; $i++) {
         }
 
         .col-date {
-            flex-basis: 90px; /* width: 203 - 113 */
+            flex-basis: 90px;
             font-size: 14px;
         }
 
         .col-title {
-            flex-basis: 225px; /* width: 428 - 203 */
+            flex-basis: 225px;
             border-left: 1px solid #FFFFFF;
             border-right: 1px solid #FFFFFF;
             font-size: 16px;

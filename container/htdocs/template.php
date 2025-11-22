@@ -148,7 +148,7 @@ if ($selected_id) {
             background: #E0E7ED;
             border-radius: 10px;
             display: flex;
-            justify-content: center;
+            justify-content: center; /* 中央揃えに戻す */
             align-items: center;
             font-size: 16px;
             color: #8E8B8B;
@@ -202,12 +202,14 @@ if ($selected_id) {
             box-sizing: border-box;
             display: flex;
             align-items: center;
+            justify-content: center; /* タイトルを中央揃えに戻す */
         }
         .detail-content {
             height: 355px;
             box-sizing: border-box;
             white-space: pre-wrap; /* To respect newlines */
             overflow-y: auto;
+            text-align: left; /* 内容を左寄せ */
         }
 
         /* Popup Styles */
@@ -317,13 +319,16 @@ if ($selected_id) {
         .popup-delete-button {
             background-color: #DC5C5C;
         }
+        .delete-popup-window .popup-buttons {
+            display: flex;
+            justify-content: center;
+            width: 100%; /* 親要素の幅いっぱいに広げる */
+            gap: 100px; /* ボタン間の隙間 */
+        }
         .popup-cancel-button {
             background-color: #5C9EDC;
         }
-        /* フォームをインライン表示にするためのスタイル */
-        #delete-template-form {
-            display: inline;
-        }
+
 
          /* Custom Scrollbar for Notification List (Seek Bar) */
         .notification-popup-window .popup-list::-webkit-scrollbar {
@@ -532,9 +537,7 @@ if ($selected_id) {
                     <div class="detail-title">
                         <?php echo htmlspecialchars($selected_template['title'], ENT_QUOTES, 'UTF-8'); ?>
                     </div>
-                    <div class="detail-content">
-                        <?php echo htmlspecialchars($selected_template['content'], ENT_QUOTES, 'UTF-8'); ?>
-                    </div>
+                    <div class="detail-content"><?php echo htmlspecialchars($selected_template['content'], ENT_QUOTES, 'UTF-8'); ?></div>
                 <?php else: ?>
                     <div class="detail-title">テンプレートを選択してください</div>
                     <div class="detail-content"></div>
@@ -570,9 +573,11 @@ if ($selected_id) {
             <div class="delete-popup-window">
                 <p class="delete-popup-title">以下のテンプレートを削除します</p>
                 <div id="delete-template-name" class="delete-popup-template-name"></div>
-                <div class="popup-buttons">
-                    <button type="button" id="cancel-delete" class="popup-button popup-cancel-button">キャンセル</button><form id="delete-template-form" style="display: inline;"><input type="hidden" id="delete-template-id" name="template_id"><button type="submit" class="popup-button popup-delete-button">削除</button></form>
-                </div>
+                <form id="delete-template-form" class="popup-buttons">
+                    <input type="hidden" id="delete-template-id" name="template_id">
+                    <button type="button" id="cancel-delete" class="popup-button popup-cancel-button">キャンセル</button>
+                    <button type="submit" class="popup-button popup-delete-button">削除</button>
+                </form>
             </div>
         </div>
 
@@ -621,11 +626,11 @@ if ($selected_id) {
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() { // 1. DOMContentLoadedを一つに統合
         const popup = document.getElementById('new-template-popup');
         const showPopupBtn = document.getElementById('show-new-template-popup');
         const cancelBtn = document.getElementById('cancel-new-template');
-        const form = document.getElementById('new-template-form');
+        const newTemplateForm = document.getElementById('new-template-form');
         const templateList = document.getElementById('template-list');
 
         const deletePopup = document.getElementById('delete-confirm-popup');
@@ -638,17 +643,18 @@ if ($selected_id) {
         const cancelEditBtn = document.getElementById('cancel-edit-template');
         const editForm = document.getElementById('edit-template-form');
 
-
-        // ポップアップ表示
+        // --- 新規登録機能 ---
         showPopupBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            form.reset();
+            newTemplateForm.reset();
             popup.style.display = 'flex';
         });
 
-        // ポップアップ非表示（キャンセルボタン）
-        cancelBtn.addEventListener('click', () => {
-            popup.style.display = 'none';
+        // 新規登録ポップアップ非表示
+        const closeNewPopup = () => { popup.style.display = 'none'; };
+        cancelBtn.addEventListener('click', closeNewPopup);
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) closeNewPopup();
         });
 
         // ポップアップ非表示（オーバーレイをクリック）
@@ -659,10 +665,10 @@ if ($selected_id) {
         });
 
         // フォーム送信処理
-        form.addEventListener('submit', async (e) => {
+        newTemplateForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const formData = new FormData(form);
+            const formData = new FormData(newTemplateForm);
 
             try {
                 const response = await fetch('template_create_process.php', {
@@ -744,28 +750,6 @@ if ($selected_id) {
             }
         });
 
-        // --- 編集機能 ---
-        // 編集ポップアップ表示
-        showEditPopupBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const selectedTemplateItem = document.querySelector('.template-item.active');
-            if (!selectedTemplateItem) {
-                alert('編集するテンプレートを選択してください。');
-                return;
-            }
-
-            // PHPから埋め込まれたデータを使用
-            const templateId = '<?php echo $selected_template['id'] ?? ''; ?>';
-            const templateTitle = '<?php echo htmlspecialchars($selected_template['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>';
-            const templateContent = '<?php echo htmlspecialchars($selected_template['content'] ?? '', ENT_QUOTES, 'UTF-8'); ?>';
-
-            document.getElementById('edit-template-id').value = templateId;
-            document.getElementById('edit-title').value = templateTitle;
-            document.getElementById('edit-content').value = templateContent;
-
-            editPopup.style.display = 'flex';
-        });
-
         // 編集ポップアップ非表示
         const closeEditPopup = () => { editPopup.style.display = 'none'; };
         cancelEditBtn.addEventListener('click', closeEditPopup);
@@ -798,9 +782,29 @@ if ($selected_id) {
             }
         });
 
-    });
+        // --- 編集機能 ---
+        if (showEditPopupBtn) {
+            showEditPopupBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const selectedTemplateItem = document.querySelector('.template-item.active');
+                if (!selectedTemplateItem) {
+                    alert('編集するテンプレートを選択してください。');
+                    return;
+                }
 
-    document.addEventListener('DOMContentLoaded', function() {
+                // PHPから埋め込まれたデータを使用
+                const templateId = '<?php echo $selected_template['id'] ?? ''; ?>';
+                const templateTitle = '<?php echo htmlspecialchars($selected_template['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>';
+                const templateContent = '<?php echo htmlspecialchars(str_replace(["\r\n", "\r", "\n"], "\\n", $selected_template['content'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>';
+
+                document.getElementById('edit-template-id').value = templateId;
+                document.getElementById('edit-title').value = templateTitle;
+                document.getElementById('edit-content').value = templateContent.replace(/\\n/g, '\n');
+
+                editPopup.style.display = 'flex';
+            });
+        }
+
         // --- 通知ポップアップ機能 ---
         const notificationBell = document.getElementById('notification-bell-icon');
         const notificationPopup = document.getElementById('notification-popup-overlay');
@@ -821,7 +825,6 @@ if ($selected_id) {
 
         if (notificationBell) {
             notificationBell.addEventListener('click', async () => {
-                console.log("ベルアイコンがクリックされました。");
                 notificationPopup.style.display = 'flex';
                 
                 try {
@@ -829,7 +832,6 @@ if ($selected_id) {
                     if (!response.ok) throw new Error(`サーバーエラー: ${response.status}`);
                     
                     const result = await response.json();
-                    console.log("通知APIからのレスポンス:", result);
 
                     if (result.success && result.notifications.length > 0) {
                         notificationList.innerHTML = '';
@@ -849,7 +851,7 @@ if ($selected_id) {
 
                             item.addEventListener('click', async (e) => {
                                 e.preventDefault();
-                                markNotificationsAsRead([n.comment_id]);
+                                await markNotificationsAsRead([n.comment_id]);
                                 item.remove(); // 通知をDOMから削除
                                 if (notificationList.children.length === 0) { // 通知がなくなったらメッセージを表示
                                     notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
@@ -874,7 +876,13 @@ if ($selected_id) {
             if (commentIds.length === 0) return;
             const formData = new FormData();
             formData.append('comment_ids', JSON.stringify(commentIds));
-            if (navigator.sendBeacon) { navigator.sendBeacon('mark_notifications_read.php', formData); } else { try { await fetch('mark_notifications_read.php', { method: 'POST', body: formData, keepalive: true }); } catch (error) { console.error('通知の既読化に失敗しました:', error); } }
+            try {
+                await fetch('mark_notifications_read.php', {
+                    method: 'POST',
+                    body: formData,
+                    keepalive: true
+                });
+            } catch (error) { console.error('通知の既読化に失敗しました:', error); }
         }
     });
     </script>

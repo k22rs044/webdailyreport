@@ -448,7 +448,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         .list-card {
             width: 401px;
             height: 260px;
-            background: #FFFFFF;
+            background: #E0E7ED;
             border-radius: 10px;
             padding: 13px 23px;
             box-sizing: border-box;
@@ -484,10 +484,12 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         .list-item {
             width: 350px;
             height: 40px;
-            background: #E0E7ED;
+            background: #ffffffff;
             border-radius: 10px;
-            text-align:center;
-            
+            display: flex;
+            align-items: center;
+            padding-left: 20px;
+            box-sizing: border-box;
         }
 
         /* --- Right Column --- */
