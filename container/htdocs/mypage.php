@@ -387,26 +387,10 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             color: #FFFFFF;
         }
         .name-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between; /* 両端揃えに変更 */
             margin-bottom: 10px; /* 下の要素との間隔 */
         }
-        /* 氏名変更ボタンのスタイルをパスワード変更ボタンと同じにする */
-        .name-container .action-button {
-            width: 154px;
-            height: 35px; /* 修正 */
-            background: #5C9EDC;
-            border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 15px;
-            line-height: 140%;
-            color: #FFFFFF;
-        }
-
-
+        
+        
         .calendar-card {
             width: 362px;
             height: 318px;
@@ -847,7 +831,6 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             <div class="user-info-card">
                 <div class="name-container">
                     <p class="name"><?php echo htmlspecialchars($user_name, ENT_QUOTES, 'UTF-8'); ?></p>
-                    <a href="#" id="show-name-popup" class="action-button">氏名変更</a>
                 </div>
                 <p class="id"><?php echo htmlspecialchars($user_student_id, ENT_QUOTES, 'UTF-8'); ?></p>
                 <div class="switch-field"> <!-- 締め切り通知スイッチ -->
@@ -1021,6 +1004,23 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         </div>
     </div>
 
+    <!-- Name Change Popup -->
+    <div id="name-popup-overlay" class="popup-overlay">
+        <div class="name-change-popup">
+            <h3 class="popup-title">氏名変更</h3>
+            <form id="name-change-form" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <div class="form-group">
+                    <label for="new-name">登録する氏名を入力</label>
+                    <input type="text" id="new-name" name="new_name" value="<?php echo htmlspecialchars($user_name, ENT_QUOTES, 'UTF-8'); ?>">
+                </div>
+                <div class="popup-buttons">
+                    <button type="button" id="cancel-name-change" class="popup-button" style="background: #5C9EDC;">キャンセル</button>
+                    <button type="submit" class="popup-button" style="background: #34B717;">変更</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Notification Popup -->
     <div id="notification-popup-overlay" class="popup-overlay">
         <div class="popup-window notification-popup-window">
@@ -1150,24 +1150,6 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 if (result.success) {
                     window.location.reload();
                 }
-            });
-
-            // Name Popup
-            const namePopupOverlay = document.getElementById('name-popup-overlay');
-            const showNamePopupBtn = document.getElementById('show-name-popup');
-            const cancelNameChangeBtn = document.getElementById('cancel-name-change');
-            const nameChangeForm = document.getElementById('name-change-form');
-
-            showNamePopupBtn.addEventListener('click', (e) => { e.preventDefault(); namePopupOverlay.style.display = 'flex'; });
-            cancelNameChangeBtn.addEventListener('click', () => { namePopupOverlay.style.display = 'none'; });
-            namePopupOverlay.addEventListener('click', (e) => { if (e.target === namePopupOverlay) { namePopupOverlay.style.display = 'none'; } });
-            nameChangeForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(nameChangeForm);
-                const response = await fetch('name_change_process.php', { method: 'POST', body: formData });
-                const result = await response.json();
-                alert(result.message);
-                if (result.success) window.location.reload();
             });
         });
 

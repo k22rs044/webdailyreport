@@ -221,7 +221,7 @@ if ($report_id) {
             height: 260px;
             white-space: pre-wrap; /* To respect newlines */
             overflow-y: auto;
-            line-height: 0.7; /* フォントサイズのn倍の行間 */
+        line-height: 1.4;
         }
 
         /* Comments Section (Right) */
@@ -259,7 +259,8 @@ if ($report_id) {
             /*min-height: 72px;*/
             font-size: 20px;
             color: #333;
-            line-height: 0.5; /* フォントサイズのn倍の行間 */
+            line-height: 1.4;
+            white-space: pre-wrap; /* 改行をそのまま表示 */
         }
         .comment-form {
             display: flex;
@@ -438,7 +439,7 @@ if ($report_id) {
                             <h2><?php echo htmlspecialchars($report['date'], ENT_QUOTES, 'UTF-8'); ?></h2>
                             <div class="detail-item"><?php echo htmlspecialchars($report['summary'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="detail-item time"><?php echo htmlspecialchars($report['work_time'], ENT_QUOTES, 'UTF-8'); ?></div>
-                            <div class="detail-item large"><?php echo nl2br(htmlspecialchars($report['details'], ENT_QUOTES, 'UTF-8')); ?></div>
+                            <div class="detail-item large"><?php echo htmlspecialchars($report['details'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="detail-item"><?php echo htmlspecialchars($report['next_summary'], ENT_QUOTES, 'UTF-8'); ?></div>
                         <?php else: ?>
                             <h2>日報が見つかりません</h2>
@@ -473,7 +474,7 @@ if ($report_id) {
                                         <?php echo htmlspecialchars($comment['author_name'], ENT_QUOTES, 'UTF-8'); ?>
                                     </div>
                                     <div class="comment-body">
-                                        <?php echo nl2br(htmlspecialchars($comment['comment_content'], ENT_QUOTES, 'UTF-8')); ?>
+                                        <?php echo htmlspecialchars($comment['comment_content'], ENT_QUOTES, 'UTF-8'); ?>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -521,16 +522,12 @@ if ($report_id) {
                         const newCommentDiv = document.createElement('div');
                         newCommentDiv.classList.add('comment-card');
 
-                        // PHPのnl2br相当の処理をJSで行う
-                        const commentBody = result.comment.comment_content.replace(/\n/g, '<br>');
-
                         newCommentDiv.innerHTML = `
                             <div class="comment-header">
                                 ${result.comment.comment_at}
                                 ${result.comment.author_name}
                             </div>
                             <div class="comment-body">
-                                ${commentBody}
                             </div>
                         `;
                         commentsList.prepend(newCommentDiv); // column-reverseのため、prependで末尾に追加される

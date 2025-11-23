@@ -260,9 +260,8 @@ try {
         /* 日報グリッド */
         .report-grid {
             display: grid;
-            /* 7列のグリッドを作成 */
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px; /* カード間の隙間 */
+            grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+            gap: 8px;
         }
 
         .report-card {
