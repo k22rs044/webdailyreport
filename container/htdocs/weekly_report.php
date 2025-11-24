@@ -120,7 +120,7 @@ for ($i = 0; $i < 7; $i++) {
             display: flex;
             flex-direction: column;
             gap: 13px; /* Spacing between rows */
-            align-items: center;
+            align-items: center; /* リスト全体を中央寄せに戻す */
         }
 
         .report-row, .report-header {
@@ -150,18 +150,21 @@ for ($i = 0; $i < 7; $i++) {
             justify-content: center;
             padding: 0 15px;
             text-align: center;
+            box-sizing: border-box; /* パディングが幅に影響しないようにする */
         }
 
         .col-date {
-            flex-basis: 90px;
+            flex: 0 0 90px; /* 幅を90pxに固定し、伸縮しないようにする */
             font-size: 14px;
         }
 
         .col-title {
-            flex-basis: 225px;
+            flex: 0 0 225px; /* 幅を225pxに固定し、伸縮しないようにする */
             border-left: 1px solid #FFFFFF;
             border-right: 1px solid #FFFFFF;
             font-size: 16px;
+            overflow: hidden; /* テキストがはみ出す場合を考慮 */
+            white-space: nowrap; /* テキストの折り返しを防ぐ */
         }
 
         .col-details {
@@ -381,6 +384,32 @@ for ($i = 0; $i < 7; $i++) {
         }
 
         async function markNotificationsAsRead(commentIds) { if (commentIds.length === 0) return; const formData = new FormData(); formData.append('comment_ids', JSON.stringify(commentIds)); if (navigator.sendBeacon) { navigator.sendBeacon('mark_notifications_read.php', formData); } else { try { await fetch('mark_notifications_read.php', { method: 'POST', body: formData, keepalive: true }); } catch (error) { console.error('通知の既読化に失敗しました:', error); } } }
+
+        // --- タイトル列のフォントサイズ調整機能 ---
+        function adjustTitleFontSize(element) {
+            // スタイルを一時的に変更して正確なテキスト幅を取得
+            element.style.fontSize = '16px'; // 基準フォントサイズ
+            element.style.overflow = 'visible';
+
+            // padding (左右15pxずつ) を考慮
+            const containerWidth = element.clientWidth - 30; 
+            const textWidth = element.scrollWidth;
+            let fontSize = 16;
+
+            // テキストの幅がコンテナを超える場合、フォントサイズを計算して縮小
+            if (textWidth > containerWidth) {
+                fontSize = Math.floor(16 * (containerWidth / textWidth));
+                fontSize = Math.max(fontSize, 8); // 最小フォントサイズを8pxに設定
+            }
+
+            element.style.fontSize = fontSize + 'px';
+            element.style.overflow = 'hidden'; // スタイルを元に戻す
+        }
+
+        // すべての.col-title要素に適用
+        const titleCols = document.querySelectorAll('.col-title');
+        titleCols.forEach(adjustTitleFontSize);
+
     });
     </script>
 </body>

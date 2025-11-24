@@ -416,12 +416,14 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             text-align: center;
         }
         .calendar-grid div {
-            height: 40px; /* Adjusted for smaller height */
+            width: 45px; /* 幅を固定 */
+            height: 40px;
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 10.26px;
             box-sizing: border-box;
+            margin: 0; /* 不要なマージンをリセット */
         }
         .day-name { font-weight: 600; height: 27px !important; }
         .day-number { border: 0.73px solid #D5D4DF; }
@@ -474,6 +476,10 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             align-items: center;
             padding-left: 20px;
             box-sizing: border-box;
+            /* テキストがはみ出さないように設定 */
+            overflow: hidden;
+            white-space: nowrap;
+            font-size: 16px; /* JavaScriptで調整するための基準フォントサイズ */
         }
 
         /* --- Right Column --- */
@@ -653,8 +659,15 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         .password-change-popup .popup-buttons, .email-change-popup .popup-buttons {
             display: flex;
             justify-content: space-between;
-            width: 311px;
+            width: 400px;
+            padding: 0 50px;
             margin-top: 30px;
+        }
+        /* メールアドレス変更ポップアップのボタン位置調整 */
+        .email-change-popup .popup-buttons {
+            margin-top: 15px; /* 上に移動 */
+            justify-content: center; /* ボタンを中央に寄せる */
+            gap: 20px; /* ボタン間のスペース */
         }
         .password-change-popup .popup-button, .email-change-popup .popup-button {
             width: 100px;
@@ -796,6 +809,78 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             padding: 20px;
         }
 
+        /* New Eye Icon Styles */
+        .password-toggle-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+        }
+        
+        .eye-icon-container {
+            width: 30px;
+            height: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 目の輪郭 (上まぶた) */
+        .eye-outline {
+            position: absolute;
+            top: 0px; /* アイコン全体の位置を調整 */
+            width: 30px;
+            height: 15px;
+            border: 2px solid black;
+            border-bottom: none;
+            border-top-left-radius: 30px;
+            border-top-right-radius: 30px;
+            box-sizing: border-box; /* paddingとborderをwidth/heightに含める */
+            z-index: 2;
+        }
+
+
+        /* 瞳の基本スタイル */
+        .eye-pupil {
+            position: absolute;
+            width: 10px; /* 線画のデフォルトサイズ */
+            height: 10px;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* 中央に配置 */
+            z-index: 10;
+            transition: all 0.2s ease;
+        }
+
+        /* 1. パスワード表示 ON (塗りつぶし瞳) */
+        .is-visible .eye-pupil {
+            background-color: black; /* 瞳を塗りつぶし */
+            border: none;
+            width: 12px; /* 塗りつぶしアイコンのサイズに調整 */
+            height: 12px;
+        }
+
+        /* 2. パスワード非表示 OFF (線画瞳) */
+        .is-hidden .eye-pupil {
+            background-color: transparent; /* 瞳を透明に */
+            border: 2px solid black; /* 瞳を線画の円にする */
+        }
+
+        /* 3. 斜線 (パスワード非表示時のシンボル) */
+        .is-hidden::after {
+            content: '';
+            position: absolute;
+            width: 28px;
+            height: 2px;
+            background: black;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg); 
+            border-radius: 2px;
+            z-index: 15;
+        }
 
     </style>
 </head>
@@ -969,14 +1054,20 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                     <label for="current-password">現在のパスワードを入力</label>
                     <div class="input-wrapper">
                         <input type="password" id="current-password" name="current_password">
-                        <svg class="password-toggle-icon" id="toggle-current-password" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12C18.6 16 15.6 18 12 18C8.4 18 5.4 16 3 12C5.4 8 8.4 6 12 6C15.6 6 18.6 8 21 12Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <div class="password-toggle-icon eye-icon-container is-hidden" id="toggle-current-password">
+                            <div class="eye-outline"></div>
+                            <div class="eye-pupil"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="new-password">新しいパスワードを入力</label>
                     <div class="input-wrapper">
                         <input type="password" id="new-password" name="new_password">
-                        <svg class="password-toggle-icon" id="toggle-new-password" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12C18.6 16 15.6 18 12 18C8.4 18 5.4 16 3 12C5.4 8 8.4 6 12 6C15.6 6 18.6 8 21 12Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <div class="password-toggle-icon eye-icon-container is-hidden" id="toggle-new-password">
+                            <div class="eye-outline"></div>
+                            <div class="eye-pupil"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="popup-buttons">
@@ -997,7 +1088,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                     <input type="email" id="new-email" name="new_email">
                 </div>
                 <div class="popup-buttons">
-                    <button type="button" id="cancel-email-change" class="popup-button" style="background: #5C9EDC;">キャンセル</button>
+                   <button type="button" id="cancel-email-change" class="popup-button" style="background: #5C9EDC;">キャンセル</button>
                     <button type="submit" class="popup-button" style="background: #34B717;">変更</button>
                 </div>
             </form>
@@ -1068,9 +1159,15 @@ for ($day = 1; $day <= $days_in_month; $day++) {
 
             // Password visibility toggle
             const togglePasswordVisibility = (toggleBtn, passwordInput) => {
+                // 初期状態を設定
+                toggleBtn.classList.add('is-hidden');
+
                 toggleBtn.addEventListener('click', () => {
                     const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                     passwordInput.setAttribute('type', type);
+                    const isPasswordVisible = type === 'text';
+                    toggleBtn.classList.toggle('is-visible', isPasswordVisible);
+                    toggleBtn.classList.toggle('is-hidden', !isPasswordVisible);
                 });
             };
 
@@ -1151,6 +1248,32 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                     window.location.reload();
                 }
             });
+
+            // --- リストアイテムのフォントサイズ調整機能（修正版） ---
+            function adjustFontSize(element) {
+                // スタイルをリセットして正確な幅を取得
+                element.style.fontSize = '16px';
+                element.style.whiteSpace = 'nowrap';
+                element.style.overflow = 'visible'; // 一時的に表示してscrollWidthを計算
+
+                const containerWidth = element.clientWidth - 20; // padding-left: 20px を考慮
+                const textWidth = element.scrollWidth;
+                let fontSize = 16;
+
+                // テキストの幅がコンテナを超える場合、フォントサイズを小さくする
+                if (textWidth > containerWidth) {
+                    fontSize = Math.floor(16 * (containerWidth / textWidth));
+                    fontSize = Math.max(fontSize, 8); // 最小フォントサイズを8pxに制限
+                }
+
+                element.style.fontSize = fontSize + 'px';
+                element.style.overflow = 'hidden'; // スタイルを元に戻す
+            }
+
+            // すべての.list-item要素に適用
+            const listItems = document.querySelectorAll('.list-item');
+            listItems.forEach(adjustFontSize);
+
         });
 
         // --- 通知ポップアップ機能 ---

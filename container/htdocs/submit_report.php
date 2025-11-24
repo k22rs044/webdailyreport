@@ -36,8 +36,8 @@ $report_date = date('Y-m-d'); // 作成日 (DATE型)
 $report_id = $user_id . '_' . $report_date;
 
 // 簡易バリデーション (DB制約に合わせる)
-if (empty($task) || empty($detail) || empty($user_id)) {
-    // $_SESSION['error'] = '必須項目が不足しています。';
+if (empty($task) || empty($detail) || empty($next_task) || empty($user_id)) {
+    // $_SESSION['error'] = '必須項目が不足しています。次回作業概要も入力してください。';
     header('Location: top.php'); 
     exit;
 }

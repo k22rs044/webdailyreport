@@ -470,8 +470,8 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         .progress-text {
             text-align: center;
         }
-        .progress-text .label { font-size: 24px; }
-        .progress-text .days { font-size: 29px; margin-top: 10px; }
+        .progress-text .label { font-size: clamp(18px, 2vw, 24px); }
+        .progress-text .days { font-size: clamp(22px, 2.5vw, 29px); margin-top: 10px; }
 
         .chart-card {
             background: #E0E7ED;
@@ -979,7 +979,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             <div class="popup-window notification-popup-window">
                 <h3 class="popup-title">新しい通知</h3>
                 <div id="notification-list" class="popup-list">
-                    <!-- 通知がここに動的に挿入されます -->
+                    <!-- 通知がここに動的に挿入 -->
                     <div class="popup-list-item">通知はありません</div>
                 </div>
                 <button class="popup-close-button">閉じる</button>
@@ -1039,6 +1039,27 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             const timerDisplay = document.getElementById('timer-display');
             const pauseBtn = document.getElementById('timer-pause-btn');
             const endBtn = document.getElementById('timer-end-btn');
+
+            // --- 登録ボタンの有効/無効化 ---
+            const checkFormValidity = () => {
+                const task = workSummaryInput.value.trim();
+                const detail = workDetailsTextarea.value.trim();
+                const nextTask = nextWorkSummaryInput.value.trim();
+
+                // 3つの必須項目がすべて入力されているかチェック
+                if (task !== '' && detail !== '' && nextTask !== '') {
+                    submitButton.disabled = false;
+                } else {
+                    submitButton.disabled = true;
+                }
+            };
+
+            // 各入力フィールドの入力イベントを監視
+            workSummaryInput.addEventListener('input', checkFormValidity);
+            workDetailsTextarea.addEventListener('input', checkFormValidity);
+            nextWorkSummaryInput.addEventListener('input', checkFormValidity);
+            // ページ読み込み時にもチェックを実行
+            checkFormValidity();
 
 
             // --- タイマー機能の状態管理 ---
@@ -1221,7 +1242,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 const task = workSummaryInput.value.trim();
                 const detail = workDetailsTextarea.value.trim();
                 if (task === '' || detail === '') {
-                    displayMessage('作業概要と作業詳細は必須項目です。', 'error');
+                    displayMessage('必須項目が未記入です', 'error');
                     return;
                 }
 

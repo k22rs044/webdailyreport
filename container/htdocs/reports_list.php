@@ -150,15 +150,23 @@ try {
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 0 36px;
             color: #FFFFFF;
+            /* --- 変更ここから --- */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100; /* 他の要素より手前に表示 */
+            /* --- 変更ここまで --- */
         }
 
         .header-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: 1208px; /* 1280 - 36*2 */
+            width: 100%;
+            max-width: 1208px; /* 1280 - 36*2 */
+            padding: 0 36px;
         }
 
         .header-left a, .header-right a {
@@ -189,7 +197,9 @@ try {
 
         /* メインコンテンツ */
         .main-content {
-            padding: 20px 40px;
+            /* --- 変更ここから --- */
+            padding: 70px 40px 20px 40px; /* headerの高さ(50px) + 元のpadding-top(20px) */
+            /* --- 変更ここまで --- */
         }
 
         /* フィルターバー */
@@ -328,11 +338,6 @@ try {
         .notification-popup-window {
             width: 460px;
             height: 500px; /* From Rectangle 5563 */
-            
-            /* Existing background, border, border-radius are correct */
-            /* background: #FFFFFF; */
-            /* border: 5px solid #5C9EDC; */
-            /* border-radius: 10px; */
 
             /* Override default popup-window padding for absolute positioning of children */
             padding: 0; 
