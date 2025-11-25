@@ -49,7 +49,7 @@ if ($report_id) {
         $db_report = $result->fetch_assoc();
 
         if ($db_report) {
-            // 取得したデータを表示用に整形
+            // 取得したデータを表示
             $date = new DateTime($db_report['report_date']);
             $work_time_minutes = (int)$db_report['work_time'];
             $hours = floor($work_time_minutes / 60);
@@ -524,7 +524,7 @@ if ($report_id) {
                     const result = await response.json();
 
                     if (result.success) {
-                        // 新しいコメントをリストに動的に追加
+                        // 新しいコメントをリストに追加
                         const newCommentDiv = document.createElement('div');
                         newCommentDiv.classList.add('comment-card');
 

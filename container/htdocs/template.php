@@ -79,6 +79,12 @@ if ($selected_id) {
             align-items: center;
             padding: 0 36px;
             color: #FFFFFF;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+            box-sizing: border-box;
         }
 
         .header-container {
@@ -108,8 +114,10 @@ if ($selected_id) {
         /* Main Content Layout */
         .main-content {
             display: flex;
+            flex-wrap: wrap; /* 折り返し */
             gap: 20px;
-            padding: 20px 40px;
+            padding: 70px 20px 20px 20px; /* ヘッダーの高さ(50px)を考慮 */
+            justify-content: center;
         }
 
         /* Left Column: Template List */
@@ -125,7 +133,7 @@ if ($selected_id) {
             border-radius: 10px;
             padding: 10px 20px;
             font-size: 16px;
-            width: 500px;
+            width: 300px;
         }
         .sort-options {
             display: flex;
@@ -148,7 +156,7 @@ if ($selected_id) {
             background: #E0E7ED;
             border-radius: 10px;
             display: flex;
-            justify-content: center; /* 中央揃えに戻す */
+            justify-content: center;
             align-items: center;
             font-size: 16px;
             color: #8E8B8B;

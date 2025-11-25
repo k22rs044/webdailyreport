@@ -85,6 +85,12 @@ for ($i = 0; $i < 7; $i++) {
             align-items: center;
             padding: 0 36px;
             color: #FFFFFF;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+            box-sizing: border-box; /* パディングを含めて幅を100%にする */
         }
 
         .header-container {
@@ -113,7 +119,7 @@ for ($i = 0; $i < 7; $i++) {
         }
         /* Main Content */
         .main-content {
-            padding: 20px 40px;
+            padding: 70px 20px 20px 20px; /* ヘッダーの高さ(50px)を考慮 */
         }
 
         .report-list {

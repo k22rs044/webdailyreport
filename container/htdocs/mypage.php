@@ -251,6 +251,12 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             align-items: center;
             padding: 0 36px;
             color: #FFFFFF;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+            box-sizing: border-box;
         }
 
         .header-container {
@@ -282,7 +288,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             display: flex;
             justify-content: center;
             gap: 20px; /* Spacing between columns */
-            padding: 12px 0; /* top: 62px - header:50px */
+            padding: 70px 20px 20px 20px; /* top: 62px - header:50px */
             max-width: 1280px;
             margin: 0 auto;
         }

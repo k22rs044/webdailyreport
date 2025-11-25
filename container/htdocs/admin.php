@@ -12,7 +12,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 $sort_by = $_GET['sort_by'] ?? 'user_id'; // デフォルトの並び替え項目
 $sort_order = $_GET['sort_order'] ?? 'asc'; // デフォルトの並び替え順序
 
-// 並び替え項目が許可されたリストに含まれているか検証（SQLインジェクション対策）
+// 並び替え項目が許可されたリストに含まれているか検証
 $allowed_sort_columns = ['user_id', 'submission_count', 'submission_rate', 'days_since_last_report'];
 if (!in_array($sort_by, $allowed_sort_columns)) {
     $sort_by = 'user_id'; // 不正な値の場合はデフォルトに戻す
@@ -24,7 +24,7 @@ $sort_order = strtolower($sort_order) === 'desc' ? 'DESC' : 'ASC';
 // ORDER BY句を構築
 $order_by_clause = "ORDER BY {$sort_by} {$sort_order}";
 
-// 提出率や最終提出日がNULLの場合の並び順を制御
+// 提出率や最終提出日がNULLの場合の並び順
 if ($sort_by === 'submission_rate' || $sort_by === 'days_since_last_report') {
     $order_by_clause = "ORDER BY CASE WHEN {$sort_by} IS NULL THEN 1 ELSE 0 END, {$sort_by} {$sort_order}";
 }
@@ -32,7 +32,7 @@ if ($sort_by === 'submission_rate' || $sort_by === 'days_since_last_report') {
 
 $users = [];
 try {
-    // Userテーブルから全ユーザー情報を取得し、提出日数と提出率を計算するサブクエリを追加
+    // Userテーブルから全ユーザー情報を取得し、提出日数と提出率を計算する
     $sql = "SELECT 
                 u.user_id, 
                 u.name, 
@@ -94,22 +94,24 @@ try {
         }
         a { text-decoration: none; color: inherit; }
 
-        /* Header (全ページ共通化を推奨) */
-        header {
+        /* Header*/
+header {
             background: #5C9EDC;
             height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 36px;
             color: #FFFFFF;
-            /* --- 変更ここから --- */
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             z-index: 100;
+            box-sizing: border-box; /* パディングを含めて幅を100%にする */
         }
         .header-container {
-            width: 1208px;
-            height: 100%;
-            margin: 0 auto;
+            width: 1208px; /* 1280 - 36*2 */
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -117,6 +119,7 @@ try {
         .header-left a, .header-right a {
             font-size: 24px;
             color: #FFFFFF;
+            line-height: 29px;
         }
         .header-right {
             display: flex;
@@ -143,10 +146,11 @@ try {
         .control-bar {
             display: flex;
             align-items: center;
+            justify-content: center; /* 要素を中央に寄せる */
             gap: 20px;
             margin-bottom: 30px;
             width: 1200px;
-            margin: 0 auto 30px; /* 中央寄せと下マージン */
+            margin: 30px auto; /* 上下のマージンを調整し、左右は自動で中央寄せ */
         }
         .delete-button {
             background-color: #DC5C5E;
@@ -183,7 +187,6 @@ try {
             justify-content: center;
             align-items: center;
             font-size: 20px;
-            margin-left: auto;
         }
 
         /* User List */
@@ -407,12 +410,13 @@ try {
         .delete-button {
             cursor: pointer;
         }
-        /* フォームをインライン表示にするためのスタイル */
+
+        /* フォームをインライン表示にする */
         #delete-user-form {
             display: inline;
         }
 
-        /* Notification Popup Styles (from other pages) */
+        /* 通知 */
         .popup-overlay {
             display: none;
             position: fixed;
@@ -525,7 +529,7 @@ try {
                         <a href="admin.php">管理者画面</a>
                     <?php endif; ?>
                 </nav>
-                <div id="notification-bell-icon" class="notification-bell">
+                <div id="notification-bell-icon" class="notification-bell" style="cursor: pointer; position: relative;">
                     <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12.5 2.8C15.8152 2.8 18.9946 4.10678 21.3891 6.50126C23.7835 8.89574 25.0903 12.0752 25.0903 15.3903C25.0903 20.3903 25.0903 22.5903 25.0903 22.5903H-0.090332C-0.090332 22.5903 -0.090332 20.3903 -0.090332 15.3903C-0.090332 12.0752 1.21645 8.89574 3.61093 6.50126C6.00541 4.10678 9.18484 2.8 12.5 2.8Z" fill="white"/>
                         <path d="M16.5 24.8C16.5 25.5935 16.1839 26.3529 15.6213 26.9155C15.0587 27.4781 14.2993 27.8 13.5 27.8C12.7007 27.8 11.9413 27.4781 11.3787 26.9155C10.8161 26.3529 10.5 25.5935 10.5 24.8H16.5Z" fill="white"/>
@@ -605,7 +609,7 @@ try {
         </div>
     </div>
 
-    <!-- New User Popup -->
+    <!-- ユーザー登録 -->
     <div id="new-user-popup" class="popup-overlay">
         <div class="new-user-popup-window">
             <h2>ユーザー 新規登録</h2>
@@ -637,7 +641,7 @@ try {
         </div>
     </div>
 
-    <!-- Delete User Popup -->
+    <!-- ユーザー削除 -->
     <div id="delete-user-popup" class="popup-overlay">
         <div class="delete-user-popup-window">
             <h3 class="popup-title">以下のユーザーを削除します</h3>
@@ -652,7 +656,7 @@ try {
         </div>
     </div>
 
-    <!-- Notification Popup -->
+    <!-- 通知 Popup -->
     <div id="notification-popup-overlay" class="popup-overlay">
         <div class="popup-window notification-popup-window">
             <h3 class="popup-title">新しい通知</h3>
@@ -676,7 +680,7 @@ try {
                 });
             });
 
-            // New User Popup
+            // 新規登録 Popup
             const newUserPopup = document.getElementById('new-user-popup');
             const showNewUserPopupBtn = document.getElementById('show-new-user-popup');
             const cancelNewUserBtn = document.getElementById('cancel-new-user');
@@ -717,7 +721,7 @@ try {
                 }
             });
 
-            // Delete User Popup
+            // 削除 Popup
             const deleteUserPopup = document.getElementById('delete-user-popup');
             const showDeletePopupBtn = document.getElementById('show-delete-popup');
             const cancelDeleteUserBtn = document.getElementById('cancel-delete-user');
@@ -823,7 +827,7 @@ try {
             const notificationList = document.getElementById('notification-list');
             const closeNotificationBtn = notificationPopup.querySelector('.popup-close-button');
 
-        // Close the notification popup
+        // 通知
         closeNotificationBtn.addEventListener('click', () => {
             notificationPopup.style.display = 'none';
         });

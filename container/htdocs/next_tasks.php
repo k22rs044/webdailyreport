@@ -80,13 +80,19 @@ if ($selected_id) {
             align-items: center;
             padding: 0 36px;
             color: #FFFFFF;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+            box-sizing: border-box;
         }
 
         .header-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: 1208px; /* 1280 - 36*2 */
+            width: 1208px;
         }
 
         .header-left a, .header-right a {
@@ -110,7 +116,8 @@ if ($selected_id) {
         .main-content {
             display: flex;
             gap: 20px;
-            padding: 20px 40px;
+            padding: 70px 40px 20px 40px; /* ヘッダーの高さ(50px)を考慮 */
+            justify-content: center;
         }
 
         .filter-bar {
@@ -187,9 +194,7 @@ if ($selected_id) {
             cursor: pointer;
             box-sizing: border-box;
         }
-        .task-item:hover {
-            /* .activeと共通のスタイルにまとめます */
-        }
+        
         .task-item.active, .task-item:hover {
             background-color: #d1d9e0;
             color: #333;
@@ -301,29 +306,24 @@ if ($selected_id) {
         }
 
         .notification-popup-window .popup-list::-webkit-scrollbar-track {
-            background: #f1f1f1; /* トラックの背景色 */
+            background: #f1f1f1; 
             border-radius: 10px;
         }
 
         .notification-popup-window .popup-list::-webkit-scrollbar-thumb {
-            background: #888; /* サム（ドラッグする部分）の色 */
+            background: #888; 
             border-radius: 10px;
         }
 
         .notification-popup-window .popup-list::-webkit-scrollbar-thumb:hover {
-            background: #555; /* サムのホバー時の色 */
+            background: #555; 
         }
 
-        /* Notification Popup */
-        /* Based on "通知p" and "Rectangle 5563" */
+        
+        /* 通知p*/
         .notification-popup-window {
             width: 460px;
             height: 500px; /* From Rectangle 5563 */
-            
-            /* Existing background, border, border-radius are correct */
-            /* background: #FFFFFF; */
-            /* border: 5px solid #5C9EDC; */
-            /* border-radius: 10px; */
 
             /* Override default popup-window padding for absolute positioning of children */
             padding: 0; 
