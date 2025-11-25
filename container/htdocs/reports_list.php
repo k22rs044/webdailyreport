@@ -314,6 +314,11 @@ try {
             display: block; /* aタグをブロック要素にする */
         }
 
+        /* 日報が少ない場合にカードが伸びないようにする */
+        .report-grid.few-items {
+            grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+        }
+
         /* Custom Scrollbar for Notification List (Seek Bar) */
         .notification-popup-window .popup-list::-webkit-scrollbar {
             width: 8px; /* スクロールバーの幅 */
@@ -508,7 +513,7 @@ try {
                 <a href="reports_list.php" class="reset-button">リセット</a>
             </form>
 
-            <section class="report-grid">
+            <section class="report-grid <?php if (count($reports) <= 6) echo 'few-items'; ?>">
                 <?php foreach ($reports as $report): ?>
                     <div class="report-card">
                         <div style="display: flex; justify-content: space-between; align-items: center;">

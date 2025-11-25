@@ -99,6 +99,12 @@ try {
             background: #5C9EDC;
             height: 50px;
             color: #FFFFFF;
+            /* --- 変更ここから --- */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
         }
         .header-container {
             width: 1208px;
@@ -131,7 +137,7 @@ try {
         .main-container {
             width: 1200px;
             margin: 0 auto;
-            padding: 30px 0;
+            padding: 80px 0 30px 0; /* headerの高さ(50px) + 元のpadding-top(30px) */
         }
         /* Control Bar */
         .control-bar {

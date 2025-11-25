@@ -131,6 +131,12 @@ if ($report_id) {
             align-items: center;
             padding: 0 36px;
             color: #FFFFFF;
+            /* --- 変更ここから --- */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
         }
 
         .header-container {
@@ -159,7 +165,7 @@ if ($report_id) {
         }
         /* Main Content Layout */
         .main-content {
-            padding: 25px 40px;
+            padding: 75px 40px 25px 40px; /* headerの高さ(50px) + 元のpadding-top(25px) */
         }
         .back-button {
             display: inline-flex;

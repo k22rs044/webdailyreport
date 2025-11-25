@@ -35,6 +35,17 @@ try {
     error_log($e->getMessage());
 }
 
+// URLから選択されたIDを取得。なければ最初のものを選択
+$selected_id = $_GET['id'] ?? $next_tasks[0]['task_id'] ?? null;
+$selected_task = null;
+if ($selected_id) {
+    foreach ($next_tasks as $task) {
+        if ($task['task_id'] == $selected_id) {
+            $selected_task = $task;
+            break;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -97,10 +108,11 @@ try {
         }
         /* Main Content */
         .main-content {
+            display: flex;
+            gap: 20px;
             padding: 20px 40px;
         }
 
-        /* Filter Bar */
         .filter-bar {
             display: flex;
             align-items: center;
@@ -124,13 +136,35 @@ try {
             gap: 5px;
         }
         .new-task-button {
-            margin-left: auto;
             background-color: #5C9EDC;
             color: #FFFFFF;
             padding: 8px 20px;
             border-radius: 10px;
             font-size: 20px;
             font-weight: 400;
+            height: 50px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .delete-button {
+            background-color: #DC5C5C;
+            color: #FFFFFF;
+            padding: 8px 20px;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: 400;
+            height: 50px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .actions-column {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
         }
 
         /* Task List */
@@ -151,9 +185,15 @@ try {
             font-size: 16px;
             color: #8E8B8B;
             cursor: pointer;
+            box-sizing: border-box;
         }
         .task-item:hover {
+            /* .activeと共通のスタイルにまとめます */
+        }
+        .task-item.active, .task-item:hover {
             background-color: #d1d9e0;
+            color: #333;
+            border: 1px solid #5C9EDC;
         }
 
         /* Popup Styles (template.phpから流用) */
@@ -211,6 +251,49 @@ try {
         }
         .popup-cancel-button { background-color: #8E8B8B; }
         .popup-submit-button { background-color: #5C9EDC; }
+
+        /* 削除確認ポップアップのスタイル */
+        .delete-popup-window {
+            width: 542px;
+            height: 252px;
+            background: #E0E7ED;
+            border: 5px solid #DC5C5E;
+            border-radius: 10px;
+            box-sizing: border-box;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .delete-popup-title {
+            font-size: 24px;
+            line-height: 1.4;
+            color: #000000;
+            margin: 0;
+            text-align: center;
+        }
+        .delete-task-summary {
+            width: 312px;
+            height: 50px;
+            background: #FFFFFF;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #8E8B8B;
+            padding: 0 15px;
+            box-sizing: border-box;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .delete-popup-window .popup-buttons {
+            width: 100%;
+            justify-content: center;
+            gap: 100px;
+        }
 
          /* Custom Scrollbar for Notification List (Seek Bar) */
         .notification-popup-window .popup-list::-webkit-scrollbar {
@@ -382,27 +465,32 @@ try {
     </header>
 
         <main class="main-content">
-            <form action="next_tasks.php" method="GET" class="filter-bar">
-                <div class="sort-options">
-                    <span class="sort-label">並び替え</span>
-                    <div class="radio-group">
-                        <input type="radio" id="sort-new" name="sort_order" value="new" <?php if ($sort_order === 'new') echo 'checked'; ?> onchange="this.form.submit()">
-                        <label for="sort-new">新しい順</label>
+            <aside class="task-list-column">
+                <form action="next_tasks.php" method="GET" class="filter-bar">
+                    <div class="sort-options">
+                        <span class="sort-label">並び替え</span>
+                        <div class="radio-group">
+                            <input type="radio" id="sort-new" name="sort_order" value="new" <?php if ($sort_order === 'new') echo 'checked'; ?> onchange="this.form.submit()">
+                            <label for="sort-new">新しい順</label>
+                        </div>
+                        <div class="radio-group">
+                            <input type="radio" id="sort-old" name="sort_order" value="old" <?php if ($sort_order === 'old') echo 'checked'; ?> onchange="this.form.submit()">
+                            <label for="sort-old">古い順</label>
+                        </div>
                     </div>
-                    <div class="radio-group">
-                        <input type="radio" id="sort-old" name="sort_order" value="old" <?php if ($sort_order === 'old') echo 'checked'; ?> onchange="this.form.submit()">
-                        <label for="sort-old">古い順</label>
-                    </div>
-                </div>
-                <a href="#" id="show-new-task-popup" class="new-task-button">新規登録</a>
-            </form>
+                </form>
 
-            <section id="task-list" class="task-list">
-                <?php foreach ($next_tasks as $task): ?>
-                    <a href="#" class="task-item" data-id="<?php echo htmlspecialchars($task['task_id'], ENT_QUOTES, 'UTF-8'); ?>">
-                        <?php echo htmlspecialchars($task['task_content'], ENT_QUOTES, 'UTF-8'); ?>
-                    </a>
-                <?php endforeach; ?>
+                <section id="task-list" class="task-list">
+                    <?php foreach ($next_tasks as $task): ?>
+                        <a href="?id=<?php echo htmlspecialchars($task['task_id'], ENT_QUOTES, 'UTF-8'); ?>" class="task-item <?php echo ($task['task_id'] == $selected_id) ? 'active' : ''; ?>">
+                            <?php echo htmlspecialchars($task['task_content'], ENT_QUOTES, 'UTF-8'); ?>
+                        </a>
+                    <?php endforeach; ?>
+                </section>
+            </aside>
+            <section class="actions-column">
+                <a href="#" id="show-delete-popup" class="delete-button">削除</a>
+                <a href="#" id="show-new-task-popup" class="new-task-button">新規登録</a>
             </section>
         </main>
 
@@ -423,6 +511,18 @@ try {
             </div>
         </div>
 
+        <!-- Delete Confirmation Popup -->
+        <div id="delete-task-popup" class="popup-overlay">
+            <div class="delete-popup-window">
+                <p class="delete-popup-title">以下の作業概要を削除します</p>
+                <div id="delete-task-summary" class="delete-task-summary"></div>
+                <form id="delete-task-form" class="popup-buttons">
+                    <input type="hidden" id="delete-task-id" name="task_id">
+                    <button type="button" id="cancel-delete" class="popup-button popup-cancel-button">キャンセル</button>
+                    <button type="submit" class="popup-button" style="background-color: #DC5C5C;">削除</button>
+                </form>
+            </div>
+        </div>
         <!-- Notification Popup -->
         <div id="notification-popup-overlay" class="popup-overlay">
             <div class="popup-window notification-popup-window">
@@ -443,6 +543,11 @@ try {
         const cancelBtn = document.getElementById('cancel-new-task');
         const form = document.getElementById('new-task-form');
         const taskList = document.getElementById('task-list');
+
+        const deletePopup = document.getElementById('delete-task-popup');
+        const showDeletePopupBtn = document.getElementById('show-delete-popup');
+        const cancelDeleteBtn = document.getElementById('cancel-delete');
+        const deleteForm = document.getElementById('delete-task-form');
 
         // ポップアップ表示
         showPopupBtn.addEventListener('click', (e) => {
@@ -471,14 +576,9 @@ try {
                 const result = await response.json();
 
                 if (result.success) {
-                    const newTask = document.createElement('a');
-                    newTask.href = '#';
-                    newTask.className = 'task-item';
-                    newTask.dataset.id = result.new_task.id;
-                    newTask.textContent = result.new_task.summary;
-
-                    taskList.prepend(newTask); // リストの先頭に追加
-                    closePopup();
+                    alert('新しい作業概要を登録しました。');
+                    // ページをリロードして新しい項目を選択状態にする
+                    window.location.href = `next_tasks.php?id=${result.new_task.id}`;
                 } else {
                     alert('エラー: ' + result.message);
                 }
@@ -488,6 +588,52 @@ try {
             }
         });
 
+        // --- Delete Task Logic ---
+        showDeletePopupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const selectedTaskItem = document.querySelector('.task-item.active');
+            if (!selectedTaskItem) {
+                alert('削除する作業概要を選択してください。');
+                return;
+            }
+
+            const taskSummary = selectedTaskItem.textContent.trim();
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskId = urlParams.get('id');
+
+            document.getElementById('delete-task-summary').textContent = taskSummary;
+            document.getElementById('delete-task-id').value = taskId;
+            deletePopup.style.display = 'flex';
+        });
+
+        const closeDeletePopup = () => { deletePopup.style.display = 'none'; };
+        cancelDeleteBtn.addEventListener('click', closeDeletePopup);
+        deletePopup.addEventListener('click', (e) => {
+            if (e.target === deletePopup) closeDeletePopup();
+        });
+
+        deleteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(deleteForm);
+
+            try {
+                const response = await fetch('next_task_delete_process.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('作業概要を削除しました。');
+                    window.location.href = 'next_tasks.php'; // 一覧のトップにリダイレクト
+                } else {
+                    alert('エラー: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('削除中にエラーが発生しました。');
+            }
+        });
         // --- 通知ポップアップ機能 ---
         const notificationBell = document.getElementById('notification-bell-icon');
         const notificationPopup = document.getElementById('notification-popup-overlay');
