@@ -322,7 +322,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             border-radius: 10px;
             padding: 20px;
             text-align: center;
-            font-size: 24px;
+            font-size: clamp(18px, 2vw, 24px); /* 画面サイズに応じてフォントサイズを調整 */
             line-height: 1.3;
         }
         .list-link-card {
@@ -656,9 +656,8 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         /* Registration Complete Popup Styles */
         .registration-popup-window { width: 358px; height: 107px; border: 5px solid #5CDC69; justify-content: center; }
         .registration-popup-message { font-size: 24px; text-align: center; color: #000000; }
-
-                /* Notification Popup */
-        /* Based on "通知p" */
+    
+        /* 通知p */
         .notification-popup-window {
             width: 460px; 
             height: 500px; 
@@ -734,7 +733,6 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         
 
         .notification-popup-window .popup-list-item {
-            /* From "Rectangle 5489", "Rectangle 5490" */
             width: 400px; 
             height: 50px;
             background: #E0E7ED;
@@ -744,15 +742,15 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             font-family: 'Inter';
             font-style: normal;
             font-weight: 400;
-            font-size: 13px; /* reports_list.php に合わせる */
-            line-height: 140%; /* または22px */
+            font-size: 13px; 
+            line-height: 140%; 
             display: flex;
             align-items: center;
             text-align: center;
             color: #8E8B8B;
 
             /* Override existing styles */
-            justify-content: center; /* Center content horizontally within the item */
+            justify-content: center; 
             padding: 0; /* Remove default padding */
             cursor: pointer; /* Already there */
         }
@@ -767,10 +765,10 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         /* Close button positioning */
         .notification-popup-window .popup-close-button {
             position: absolute;
-            bottom: 10px; /* Adjust as needed */
+            bottom: 10px; 
             left: 50%;
             transform: translateX(-50%);
-            margin-top: 0; /* Remove default margin-top: auto */
+            margin-top: 0; 
         }
 
     </style>
