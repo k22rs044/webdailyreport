@@ -1063,32 +1063,41 @@ for ($day = 1; $day <= $days_in_month; $day++) {
 
 
             // --- タイマー機能の状態管理 ---
-            let timerInterval = null, totalSeconds = 0, isPaused = false, startTime = null;
-            let activeSummaryInput = null; // リストポップアップのターゲット
+            let timerInterval = null;
+            let totalSeconds = 0; // フォーム送信時に使う最終的な秒数
+            let elapsedTimeBeforePause = 0; // 一時停止するまでの経過秒数
+            let startTime = 0; // タイマーを開始/再開したときのタイムスタンプ
+            let isPaused = false;
+            let activeSummaryInput = null;
 
             const startTimer = () => {
                 isPaused = false;
-                pauseBtn.textContent = '一時停止';                
-                
-                // 必須修正: 初回開始時にwork_startを記録
+                pauseBtn.textContent = '一時停止';
+
                 if (startHidden.value === '00:00:00') {
                     startHidden.value = getCurrentTimeFormatted();
                     displayMessage('作業時間の計測を開始しました。', 'info');
                 } else {
                     displayMessage('作業時間の計測を再開しました。', 'info');
                 }
-                startTime = Date.now();
-                
-                timerInterval = setInterval(() => { 
-                    totalSeconds++; 
-                    timerDisplay.textContent = formatTime(totalSeconds); 
+
+                startTime = Date.now(); // 計測開始/再開時刻を記録
+                timerInterval = setInterval(() => {
+                    const now = Date.now();
+                    const elapsedSinceStart = Math.floor((now - startTime) / 1000);
+                    totalSeconds = elapsedTimeBeforePause + elapsedSinceStart;
+                    timerDisplay.textContent = formatTime(totalSeconds);
                 }, 1000);
             };
             
             const stopTimer = () => clearInterval(timerInterval);
             
             const resetTimer = () => {
+                stopTimer();
                 totalSeconds = 0;
+                elapsedTimeBeforePause = 0;
+                startTime = 0;
+                timerInterval = null;
             };
 
             // --- Template Popup ---
@@ -1132,13 +1141,13 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             
             pauseBtn.addEventListener('click', () => {
                 isPaused = !isPaused;
-                pauseBtn.textContent = isPaused ? '再開' : '一時停止';
-                isPaused ? stopTimer() : startTimer();
-                
                 if (isPaused) {
+                    stopTimer();
+                    elapsedTimeBeforePause = totalSeconds; // 一時停止時点の経過秒数を保存
+                    pauseBtn.textContent = '再開';
                     displayMessage(`計測を一時停止しました。現在: ${formatTime(totalSeconds)}`, 'info');
                 } else {
-                    displayMessage('計測を再開しました。', 'info');
+                    startTimer(); // 再開
                 }
             });
             
@@ -1287,9 +1296,12 @@ for ($day = 1; $day <= $days_in_month; $day++) {
 
             // --- Generic Popup Close Logic ---
             document.querySelectorAll('.popup-overlay').forEach(popup => {
-                popup.addEventListener('click', e => { 
-                    if (e.target === popup) popup.style.display = 'none'; 
-                });
+                // タイマーポップアップ以外はオーバーレイクリックで閉じる
+                if (popup.id !== 'timer-popup-overlay') {
+                    popup.addEventListener('click', e => {
+                        if (e.target === popup) popup.style.display = 'none';
+                    });
+                }
                 const closeButton = popup.querySelector('.popup-close-button');
                 if (closeButton) closeButton.addEventListener('click', () => popup.style.display = 'none');
             });
@@ -1321,12 +1333,6 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 const countdownInterval = setInterval(updateCountdown, 1000);
                 updateCountdown(); // ページ読み込み時に即時実行
             }
-        });
-        // --- Generic Popup Close Logic ---
-        document.querySelectorAll('.popup-overlay').forEach(popup => {
-            popup.addEventListener('click', e => { 
-                if (e.target === popup) popup.style.display = 'none'; 
-            });
         });
 
         // --- 通知ポップアップ機能 ---
