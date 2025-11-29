@@ -14,9 +14,9 @@ $user_id = $_SESSION['user_id'];
 $sort_order = $_GET['sort_order'] ?? 'new'; // デフォルトは新しい順
 $order_by = '';
 if ($sort_order === 'old') {
-    $order_by = 'ORDER BY task_at ASC'; // 古い順
+    $order_by = 'ORDER BY task_at ASC, task_id ASC'; // 古い順
 } else {
-    $order_by = 'ORDER BY task_at DESC'; // 新しい順 (デフォルト)
+    $order_by = 'ORDER BY task_at DESC, task_id DESC'; // 新しい順 (デフォルト)
 }
 
 $next_tasks = [];
@@ -536,6 +536,8 @@ if ($selected_id) {
     </div>
 
     <script>
+    const taskCount = <?php echo count($next_tasks); ?>;
+
     document.addEventListener('DOMContentLoaded', function() {
         // --- New Task Popup Logic ---
         const popup = document.getElementById('new-task-popup');
@@ -552,6 +554,11 @@ if ($selected_id) {
         // ポップアップ表示
         showPopupBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            // 作業概要が10個以上の場合、アラートを表示して処理を中断
+            if (taskCount >= 10) {
+                alert('作業概要の登録は10個までです。');
+                return;
+            }
             form.reset();
             popup.style.display = 'flex';
         });

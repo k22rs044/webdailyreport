@@ -12,11 +12,19 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $is_admin = (isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
 
+// --- 表示範囲の取得（管理者向け） ---
+$scope = $_GET['scope'] ?? ($is_admin ? 'all' : 'mine'); // 管理者のデフォルトは'all', 学生は'mine'
+
 // --- 絞り込み条件の取得 ---
 $keyword = $_GET['keyword'] ?? '';
 $period = $_GET['period'] ?? 'all';
 $start_date_input = $_GET['start_date'] ?? '';
 $end_date_input = $_GET['end_date'] ?? '';
+
+// 「全員」表示で、かつ日付フィルターが何も指定されていない場合、デフォルトで「今日」に設定
+if ($scope === 'all' && !isset($_GET['period']) && empty($start_date_input) && empty($end_date_input)) {
+    $period = 'today';
+}
 
 // 期間選択に応じた日付範囲の計算
 $start_date_sql = '';
@@ -25,6 +33,15 @@ $end_date_sql = '';
 if ($period !== 'all') {
     $today = new DateTime();
     switch ($period) {
+        case 'today':
+            $start_date_sql = $today->format('Y-m-d');
+            $end_date_sql = $today->format('Y-m-d');
+            break;
+        case 'yesterday':
+            $yesterday = (new DateTime())->sub(new DateInterval('P1D'));
+            $start_date_sql = $yesterday->format('Y-m-d');
+            $end_date_sql = $yesterday->format('Y-m-d');
+            break;
         case 'this_week':
             $start_date_sql = (new DateTime('this week'))->format('Y-m-d');
             $end_date_sql = (new DateTime('this week +6 days'))->format('Y-m-d');
@@ -50,51 +67,69 @@ if ($period !== 'all') {
 
 $reports = [];
 
-// SQLのベース部分を管理者かどうかで切り替える
-if ($is_admin) {
-    // 管理者の場合: UserテーブルとJOINして氏名を取得
-    $sql_base = "SELECT r.report_id, r.report_date, r.task, u.name 
-                FROM Report r 
-                JOIN User u ON r.user_id = u.user_id 
-                 WHERE 1=1"; // 条件句の開始
-    $params = [];
-    $types = '';
+// SQLのベース部分を構築
+$params = [];
+$types = '';
+
+// scopeが'all'の場合はUserテーブルとJOINして氏名を取得
+if ($scope === 'all') {
+    $sql_base = "SELECT r.report_id, r.report_date, r.task, u.name FROM Report r JOIN User u ON r.user_id = u.user_id";
 } else {
-    // 一般ユーザーの場合: 自分の日報のみ
-    $sql_base = "SELECT report_id, report_date, task 
-                FROM Report 
-                WHERE user_id = ?";
-    $params = [$user_id];
-    $types = 's';
+    // scopeが'mine'の場合
+    if ($is_admin) {
+        // 管理者が自分の日報を見る場合もJOINしておく（nameカラムを揃えるため）
+        $sql_base = "SELECT r.report_id, r.report_date, r.task, u.name FROM Report r JOIN User u ON r.user_id = u.user_id";
+    } else {
+        // 一般ユーザーが自分の日報を見る場合
+        $sql_base = "SELECT report_id, report_date, task FROM Report";
+    }
 }
 
+// WHERE句の構築
+$where_clauses = [];
+
+// キーワード絞り込み
 if (!empty($keyword)) {
     if ($is_admin) {
-        $sql_base .= " AND (task LIKE ? OR u.name LIKE ?)";
+        $where_clauses[] = "(r.task LIKE ? OR u.name LIKE ?)";
         $params[] = '%' . $keyword . '%';
         $params[] = '%' . $keyword . '%';
         $types .= 'ss';
     } else {
-        $sql_base .= " AND task LIKE ?";
+        $where_clauses[] = "task LIKE ?";
         $params[] = '%' . $keyword . '%';
         $types .= 's';
     }
 }
+
+// 表示範囲の絞り込み ('mine' の場合)
+if ($scope === 'mine') {
+    $user_id_column = ($scope === 'all' || $is_admin) ? "r.user_id" : "user_id";
+    $where_clauses[] = "$user_id_column = ?";
+    $params[] = $user_id;
+    $types .= 's';
+}
+
+// 日付絞り込み
 if (!empty($start_date_sql)) {
-    $sql_base .= " AND " . ($is_admin ? "r." : "") . "report_date >= ?";
+    $where_clauses[] = ($scope === 'all' || $is_admin) ? "r.report_date >= ?" : "report_date >= ?";
     $params[] = $start_date_sql;
     $types .= 's';
 }
 if (!empty($end_date_sql)) {
-    $sql_base .= " AND " . ($is_admin ? "r." : "") . "report_date <= ?";
+    $where_clauses[] = ($scope === 'all' || $is_admin) ? "r.report_date <= ?" : "report_date <= ?";
     $params[] = $end_date_sql;
     $types .= 's';
 }
 
-$sql_base .= " ORDER BY " . ($is_admin ? "r." : "") . "report_date DESC" . ($is_admin ? ", u.name ASC" : "");
-
 try {
-    $stmt = $mysqli->prepare($sql_base);
+    $sql = $sql_base;
+    if (!empty($where_clauses)) {
+        $sql .= " WHERE " . implode(' AND ', $where_clauses);
+    }
+    $sql .= " ORDER BY " . (($scope === 'all' || $is_admin) ? "r.report_date DESC, u.name ASC" : "report_date DESC");
+
+    $stmt = $mysqli->prepare($sql);
     if (!empty($params)) {
         $stmt->bind_param($types, ...$params);
     }
@@ -207,9 +242,9 @@ try {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
+            gap: 10px;
             padding: 15px 0;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
             font-size: 16px;
         }
 
@@ -228,7 +263,7 @@ try {
         }
 
         .filter-bar input[type="text"] {
-            width: 300px;
+            width: 250px;
         }
 
         .filter-bar .date-input {
@@ -312,6 +347,16 @@ try {
             overflow: hidden;
             text-overflow: ellipsis;
             display: block; /* aタグをブロック要素にする */
+        }
+
+        .date-range-filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid #D9D9D9;
+            border-radius: 8px;
+            padding: 5px 15px;
+            height: 40px; /* 高さを他の要素と合わせる */
         }
 
         /* 日報が少ない場合にカードが伸びないようにする */
@@ -450,6 +495,24 @@ try {
             background-color: #f0f8ff;
         }
 
+        /* 表示範囲切り替えスイッチ */
+        .scope-switch {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 3px; /* 絞り込みメニューとの間隔を調整 */
+            gap: 5px;
+        }
+        .scope-switch a {
+            padding: 8px 16px;
+            border-radius: 8px;
+            background-color: #f0f0f0;
+            color: #333;
+            font-weight: 600;
+        }
+        .scope-switch a.active {
+            background-color: #5C9EDC;
+            color: #FFFFFF;
+        }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -485,7 +548,18 @@ try {
 
     <div class="container">
         <main class="main-content">
-            <form action="reports_list.php" method="GET" class="filter-bar">
+            <div class="scope-switch">
+                <a href="?scope=all&<?php echo http_build_query(array_diff_key($_GET, ['scope' => ''])); ?>" 
+                   class="<?php echo ($scope === 'all') ? 'active' : ''; ?>">
+                    全員の日報
+                </a>
+                <a href="?scope=mine&<?php echo http_build_query(array_diff_key($_GET, ['scope' => ''])); ?>" 
+                   class="<?php echo ($scope === 'mine') ? 'active' : ''; ?>">
+                    自分の日報
+                </a>
+            </div>
+
+            <form action="reports_list.php" method="GET" class="filter-bar" id="filter-form">
                 <label>
                     作業概要
                     <input type="text" name="keyword" placeholder="キーワードを入力" value="<?php echo htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8'); ?>">
@@ -493,23 +567,27 @@ try {
 
                 <select name="period" onchange="this.form.submit()">
                     <option value="all" <?php if ($period === 'all') echo 'selected'; ?>>全部</option>
+                    <option value="today" <?php if ($period === 'today') echo 'selected'; ?>>今日</option>
+                    <option value="yesterday" <?php if ($period === 'yesterday') echo 'selected'; ?>>昨日</option>
                     <option value="this_week" <?php if ($period === 'this_week') echo 'selected'; ?>>今週</option>
                     <option value="last_week" <?php if ($period === 'last_week') echo 'selected'; ?>>先週</option>
                     <option value="this_month" <?php if ($period === 'this_month') echo 'selected'; ?>>今月</option>
                     <option value="half_year" <?php if ($period === 'half_year') echo 'selected'; ?>>半年</option>
                 </select>
 
-                <label>
-                    開始日
-                    <input type="date" name="start_date" class="date-input" value="<?php echo htmlspecialchars($start_date_input, ENT_QUOTES, 'UTF-8'); ?>">
-                </label>
-                <span>～</span>
-                <label>
-                    終了日
-                    <input type="date" name="end_date" class="date-input" value="<?php echo htmlspecialchars($end_date_input, ENT_QUOTES, 'UTF-8'); ?>">
-                </label>
-
-                <button type="submit" class="search-button">絞り込み</button>
+                <div class="date-range-filter">
+                    <label>
+                        開始日
+                        <input type="date" name="start_date" class="date-input" value="<?php echo htmlspecialchars($start_date_input, ENT_QUOTES, 'UTF-8'); ?>">
+                    </label>
+                    <span>～</span>
+                    <label>
+                        終了日
+                        <input type="date" name="end_date" class="date-input" value="<?php echo htmlspecialchars($end_date_input, ENT_QUOTES, 'UTF-8'); ?>">
+                    </label>
+                    <button type="submit" class="search-button">絞り込み</button>
+                </div>
+                <input type="hidden" name="scope" value="<?php echo htmlspecialchars($scope, ENT_QUOTES, 'UTF-8'); ?>">
                 <a href="reports_list.php" class="reset-button">リセット</a>
             </form>
 
@@ -518,7 +596,7 @@ try {
                     <div class="report-card">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div class="report-card-date"><?php echo htmlspecialchars($report['date'], ENT_QUOTES, 'UTF-8'); ?></div>
-                            <?php if ($is_admin && $report['name']): ?>
+                            <?php if ($scope === 'all' && isset($report['name'])): ?>
                                 <div class="report-card-name"><?php echo htmlspecialchars($report['name'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <?php endif; ?>
                         </div>

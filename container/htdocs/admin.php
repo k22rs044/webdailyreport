@@ -593,12 +593,7 @@ header {
                             <div class="col col-id"><?php echo htmlspecialchars($user['user_id'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="col col-name"><?php echo htmlspecialchars($user['name'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="col col-email"><?php echo $user['email'] ? htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8') : '登録されていません'; ?></div>
-                            <div class="col col-role">
-                                <select class="user-role-select" data-user-id="<?php echo htmlspecialchars($user['user_id'], ENT_QUOTES, 'UTF-8'); ?>" data-original-value="<?php echo htmlspecialchars($user['role'], ENT_QUOTES, 'UTF-8'); ?>">
-                                    <option value="user" <?php if ($user['role'] === 'user') echo 'selected'; ?>>学生</option>
-                                    <option value="admin" <?php if ($user['role'] === 'admin') echo 'selected'; ?>>管理者</option>
-                                </select>
-                            </div>
+                            <div class="col col-role"><?php echo htmlspecialchars(($user['role'] === 'admin' ? '管理者' : '学生'), ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="col col-submission-count"><?php echo htmlspecialchars($user['submission_count'] ?? 0, ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="col col-submission-rate"><?php echo htmlspecialchars($user['submission_rate'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>%</div>
                             <div class="col col-last-report"><?php echo ($user['days_since_last_report'] !== 'N/A') ? htmlspecialchars($user['days_since_last_report'], ENT_QUOTES, 'UTF-8') . '日前' : '未提出'; ?></div>
@@ -781,44 +776,6 @@ header {
                 } else {
                     alert('エラー: ' + result.message);
                 }
-            });
-
-            // --- ユーザー権限変更機能 ---
-            const userRoleSelects = document.querySelectorAll('.user-role-select');
-            userRoleSelects.forEach(selectElement => {
-                selectElement.addEventListener('change', async (e) => {
-                    const userId = e.target.dataset.userId;
-                    const newRole = e.target.value;
-
-                    if (!confirm(`ユーザーID: ${userId} の権限を ${newRole === 'admin' ? '管理者' : '学生'} に変更しますか？`)) {
-                        // ユーザーがキャンセルした場合、元の値に戻す
-                        e.target.value = e.target.dataset.originalValue; 
-                        return;
-                    }
-
-                    const formData = new FormData();
-                    formData.append('user_id', userId);
-                    formData.append('new_role', newRole);
-
-                    try {
-                        const response = await fetch('update_user_role.php', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        const result = await response.json();
-
-                        if (result.success) {
-                            alert('権限が正常に更新されました。');
-                        } else {
-                            alert('権限の更新に失敗しました: ' + result.message);
-                        }
-                    } catch (error) {
-                        console.error('Error updating user role:', error);
-                        alert('権限の更新中にエラーが発生しました。');
-                    }
-                });
-                // 初期値を保存しておく
-                selectElement.dataset.originalValue = selectElement.value;
             });
 
             // --- 通知ポップアップ機能 ---

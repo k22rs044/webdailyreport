@@ -51,7 +51,7 @@ try {
 } catch (Exception $e) {
     error_log("Error fetching yesterday's next task for top.php: " . $e->getMessage());
 }
-// 当日日報がなければ、前日の次回作業概要をセット
+// 前日の次回作業概要をセット
 if (!$is_report_submitted) {
     $todays_report['task'] = $yesterday_next_task;
 }
@@ -59,7 +59,7 @@ if (!$is_report_submitted) {
 $templates = [];
 try {
     // ユーザーIDに基づいてテンプレートを取得
-    $sql = "SELECT template_id, title, content FROM Detail_Template WHERE user_id = ? ORDER BY created_at DESC";
+    $sql = "SELECT template_id, title, content FROM Detail_Template WHERE user_id = ? ORDER BY created_at DESC, template_id DESC";
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('s', $user_id);
     $stmt->execute();
@@ -74,7 +74,7 @@ try {
 $next_tasks = [];
 try {
     // ユーザーIDに基づいて次回作業概要を取得 (Task_Contentテーブルから)
-    $sql_next_tasks = "SELECT task_id, task_content FROM Task_Content WHERE user_id = ? ORDER BY task_at DESC";
+    $sql_next_tasks = "SELECT task_id, task_content FROM Task_Content WHERE user_id = ? ORDER BY task_at DESC, task_id DESC";
     $stmt_next_tasks = $mysqli->prepare($sql_next_tasks);
     $stmt_next_tasks->bind_param('s', $user_id);
     $stmt_next_tasks->execute();
@@ -572,7 +572,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             border: 5px solid #5C9EDC;
             border-radius: 10px;
             box-sizing: border-box;
-            padding: 20px;
+            padding: 20px 20px 0px 20px; /* 下のパディングを狭く調整 */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -586,11 +586,13 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         }
         .popup-list {
             width: 100%;
+            max-height: 600px;
             display: flex;
             flex-direction: column;
             gap: 10px;
             overflow-y: auto;
             padding: 0 10px;
+            margin-bottom: 20px; /* リストと閉じるボタンの間に余白を追加 */
         }
         .popup-list-item {
             width: 100%;
@@ -608,7 +610,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             background-color: #d1d9e0;
         }
         .popup-close-button {
-            margin-top: auto; /* Pushes button to the bottom */
+            margin-top: auto; /* ボタンをポップアップの最下部に配置 */
             padding: 8px 25px;
             background: #8CBAE6;
             border: none;
@@ -620,7 +622,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         /* Template/Summary Popup */
         .template-summary-popup {
             width: 384px;
-            height: 474px;
+            height: 600px;
         }
 
         /* Timer Popup Specific Styles */
@@ -839,7 +841,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                     <form id="report-form" action="submit_report.php" method="post" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px;">
                         <div class="form-row">
                             <input type="text" id="work-summary" name="task" class="form-input" placeholder="作業概要を入力" value="<?php echo htmlspecialchars($todays_report['task'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php if ($is_report_submitted) echo 'readonly'; ?>>
-                            <button type="button" id="show-summary-popup" class="form-button small" <?php if ($is_report_submitted) echo 'disabled'; ?>>リスト</button>
+                            <button type="button" id="show-summary-popup" class="form-button small" <?php if ($is_report_submitted) echo 'disabled'; ?> style="margin-top: 5px;">リスト</button>
                         </div>
                         <div class="form-row">
                             <input type="text" id="work-time-input" name="display_time" class="form-input" placeholder="○○:○○" value="<?php echo htmlspecialchars($todays_report['display_time'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php if ($is_report_submitted) echo 'readonly'; ?>>
@@ -847,11 +849,11 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                         </div>
                         <div class="form-row">
                             <textarea id="work-details" name="detail" class="form-textarea" placeholder="作業詳細を入力" <?php if ($is_report_submitted) echo 'readonly'; ?>><?php echo htmlspecialchars($todays_report['detail'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
-                            <button type="button" id="show-template-popup" class="form-button small" style="align-self: flex-start;" <?php if ($is_report_submitted) echo 'disabled'; ?>>テンプレート</button>
+                            <button type="button" id="show-template-popup" class="form-button small" style="align-self: flex-start; margin-top: 10px;" <?php if ($is_report_submitted) echo 'disabled'; ?>>テンプレート</button>
                         </div>
                         <div class="form-row">
                             <input type="text" id="next-work-summary" name="next_task" class="form-input" placeholder="次回作業概要を入力" value="<?php echo htmlspecialchars($todays_report['next_task'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php if ($is_report_submitted) echo 'readonly'; ?>>
-                            <button type="button" id="show-next-summary-popup" class="form-button small" <?php if ($is_report_submitted) echo 'disabled'; ?>>リスト</button>
+                            <button type="button" id="show-next-summary-popup" class="form-button small" <?php if ($is_report_submitted) echo 'disabled'; ?> style="margin-top: 5px;">リスト</button>
                         </div>
 
                         <!-- 隠しフィールド -->

@@ -13,15 +13,15 @@ $user_id = $_SESSION['user_id']; // 開発中は仮の値を使用
 $sort_order = $_GET['sort_order'] ?? 'new'; // デフォルトは新しい順
 $order_by = '';
 if ($sort_order === 'old') {
-    $order_by = 'ORDER BY created_at ASC'; // 古い順
+    $order_by = 'ORDER BY created_at ASC, template_id ASC'; // 古い順。作成日が同じ場合はIDの昇順
 } else {
-    $order_by = 'ORDER BY created_at DESC'; // 新しい順 (デフォルト)
+    $order_by = 'ORDER BY created_at DESC, template_id DESC'; // 新しい順。作成日が同じ場合はIDの降順
 }
 
 $templates = [];
 try {
     // ユーザーIDに基づいてテンプレートを取得
-    $sql = "SELECT template_id, title, content FROM Detail_Template WHERE user_id = ? " . $order_by;
+    $sql = "SELECT template_id, title, content, created_at FROM Detail_Template WHERE user_id = ? " . $order_by;
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('s', $user_id);
     $stmt->execute();
@@ -634,13 +634,14 @@ if ($selected_id) {
     </div>
 
     <script>
+    const templateCount = <?php echo count($templates); ?>;
+
     document.addEventListener('DOMContentLoaded', function() { // 1. DOMContentLoadedを一つに統合
         const popup = document.getElementById('new-template-popup');
         const showPopupBtn = document.getElementById('show-new-template-popup');
         const cancelBtn = document.getElementById('cancel-new-template');
         const newTemplateForm = document.getElementById('new-template-form');
         const templateList = document.getElementById('template-list');
-
         const deletePopup = document.getElementById('delete-confirm-popup');
         const showDeletePopupBtn = document.getElementById('show-delete-popup');
         const cancelDeleteBtn = document.getElementById('cancel-delete');
@@ -652,12 +653,18 @@ if ($selected_id) {
         const editForm = document.getElementById('edit-template-form');
 
         // --- 新規登録機能 ---
-        showPopupBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            newTemplateForm.reset();
-            popup.style.display = 'flex';
-        });
-
+        if (showPopupBtn) {
+            showPopupBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // テンプレート数が10以上の場合、アラートを表示して処理を中断
+                if (templateCount >= 10) {
+                    alert('テンプレートの登録は10個までです。');
+                    return;
+                }
+                newTemplateForm.reset();
+                popup.style.display = 'flex';
+            });
+        }
         // 新規登録ポップアップ非表示
         const closeNewPopup = () => { popup.style.display = 'none'; };
         cancelBtn.addEventListener('click', closeNewPopup);
