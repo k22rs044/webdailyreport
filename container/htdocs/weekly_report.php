@@ -281,6 +281,7 @@ for ($i = 0; $i < 7; $i++) {
                         <path d="M16.5 24.8C16.5 25.5935 16.1839 26.3529 15.6213 26.9155C15.0587 27.4781 14.2993 27.8 13.5 27.8C12.7007 27.8 11.9413 27.4781 11.3787 26.9155C10.8161 26.3529 10.5 25.5935 10.5 24.8H16.5Z" fill="white"/>
                         <path d="M12.5 0C13.5625 0.4375 13.5625 1.5625 12.5 2.1875C11.4375 1.5625 11.4375 0.4375 12.5 0Z" fill="white"/>
                     </svg>
+                    <span class="notification-badge" style="display: none; position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; background-color: red; border-radius: 50%;"></span>
                 </div>
             </div>
         </div>
@@ -325,6 +326,7 @@ for ($i = 0; $i < 7; $i++) {
         const notificationPopup = document.getElementById('notification-popup-overlay');
         const notificationList = document.getElementById('notification-list');
         const closeNotificationBtn = notificationPopup.querySelector('.popup-close-button');
+        const notificationBadge = document.querySelector('.notification-badge');
 
         // Close the notification popup
         closeNotificationBtn.addEventListener('click', () => {
@@ -371,6 +373,7 @@ for ($i = 0; $i < 7; $i++) {
                                 await markNotificationsAsRead([n.comment_id]);
                                 item.remove(); // 通知をDOMから削除
                                 if (notificationList.children.length === 0) { // 通知がなくなったらメッセージを表示
+                                    notificationBadge.style.display = 'none';
                                     notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
                                 }
                                 window.location.href = item.href;
@@ -380,6 +383,7 @@ for ($i = 0; $i < 7; $i++) {
                             commentIds.push(n.comment_id);
                         });
                     } else {
+                        notificationBadge.style.display = 'none';
                         notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
                     }
                 } catch (error) {
@@ -389,7 +393,24 @@ for ($i = 0; $i < 7; $i++) {
             });
         }
 
+        // ページ読み込み時に未読通知をチェックしてバッジを表示
+        async function checkUnreadNotifications() {
+            try {
+                const response = await fetch('get_notifications.php');
+                const result = await response.json();
+                if (result.success && result.notifications.length > 0) {
+                    notificationBadge.style.display = 'block';
+                } else {
+                    notificationBadge.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('未読通知のチェックに失敗しました:', error);
+            }
+        }
+
         async function markNotificationsAsRead(commentIds) { if (commentIds.length === 0) return; const formData = new FormData(); formData.append('comment_ids', JSON.stringify(commentIds)); if (navigator.sendBeacon) { navigator.sendBeacon('mark_notifications_read.php', formData); } else { try { await fetch('mark_notifications_read.php', { method: 'POST', body: formData, keepalive: true }); } catch (error) { console.error('通知の既読化に失敗しました:', error); } } }
+
+        checkUnreadNotifications();
 
         // --- タイトル列のフォントサイズ調整機能 ---
         function adjustTitleFontSize(element) {

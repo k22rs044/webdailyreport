@@ -912,6 +912,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                         <path d="M16.5 24.8C16.5 25.5935 16.1839 26.3529 15.6213 26.9155C15.0587 27.4781 14.2993 27.8 13.5 27.8C12.7007 27.8 11.9413 27.4781 11.3787 26.9155C10.8161 26.3529 10.5 25.5935 10.5 24.8H16.5Z" fill="white"/>
                         <path d="M12.5 0C13.5625 0.4375 13.5625 1.5625 12.5 2.1875C11.4375 1.5625 11.4375 0.4375 12.5 0Z" fill="white"/>
                     </svg>
+                    <span class="notification-badge" style="display: none; position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; background-color: red; border-radius: 50%;"></span>
                 </div>
             </div>
         </div>
@@ -1282,6 +1283,21 @@ for ($day = 1; $day <= $days_in_month; $day++) {
 
         });
 
+        // ページ読み込み時に未読通知をチェックしてバッジを表示
+        async function checkUnreadNotifications() {
+            try {
+                const response = await fetch('get_notifications.php');
+                const result = await response.json();
+                if (result.success && result.notifications.length > 0) {
+                    document.querySelector('.notification-badge').style.display = 'block';
+                } else {
+                    document.querySelector('.notification-badge').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('未読通知のチェックに失敗しました:', error);
+            }
+        }
+
         // --- 通知ポップアップ機能 ---
         const notificationBell = document.getElementById('notification-bell-icon');
         const notificationPopup = document.getElementById('notification-popup-overlay');
@@ -1353,6 +1369,9 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             formData.append('comment_ids', JSON.stringify(commentIds));
             if (navigator.sendBeacon) { navigator.sendBeacon('mark_notifications_read.php', formData); } else { try { await fetch('mark_notifications_read.php', { method: 'POST', body: formData, keepalive: true }); } catch (error) { console.error('通知の既読化に失敗しました:', error); } }
         }
+
+        // ページが読み込まれたときに未読通知をチェック
+        checkUnreadNotifications();
     
     </script>
 </body>
