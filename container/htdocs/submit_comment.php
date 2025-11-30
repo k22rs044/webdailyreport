@@ -67,6 +67,23 @@ try {
         $stmt_notification->close();
     }
 
+    // その日報にコメントしたことがある他の管理者にも通知を送信
+    $sql_admins = "SELECT DISTINCT user_id FROM Comment WHERE report_id = ? AND user_id != ? AND user_id IN (SELECT user_id FROM User WHERE role = 'admin')";
+    $stmt_admins = $mysqli->prepare($sql_admins);
+    $stmt_admins->bind_param('ss', $report_id, $user_id);
+    $stmt_admins->execute();
+    $admins_result = $stmt_admins->get_result();
+    
+    $sql_admin_notification = "INSERT INTO Notification (notification_id, user_id, report_id, created_at, is_read) VALUES (?, ?, ?, NOW(), 0) ON DUPLICATE KEY UPDATE is_read = 0, created_at = NOW()";
+    $stmt_admin_notification = $mysqli->prepare($sql_admin_notification);
+
+    while ($admin_row = $admins_result->fetch_assoc()) {
+        $admin_id = $admin_row['user_id'];
+        $stmt_admin_notification->bind_param('iss', $comment_id, $admin_id, $report_id);
+        $stmt_admin_notification->execute();
+    }
+    $stmt_admin_notification->close();
+
     // トランザクションをコミット
     $mysqli->commit();
 

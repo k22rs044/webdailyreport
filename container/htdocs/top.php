@@ -797,6 +797,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                         <path d="M16.5 24.8C16.5 25.5935 16.1839 26.3529 15.6213 26.9155C15.0587 27.4781 14.2993 27.8 13.5 27.8C12.7007 27.8 11.9413 27.4781 11.3787 26.9155C10.8161 26.3529 10.5 25.5935 10.5 24.8H16.5Z" fill="white"/>
                         <path d="M12.5 0C13.5625 0.4375 13.5625 1.5625 12.5 2.1875C11.4375 1.5625 11.4375 0.4375 12.5 0Z" fill="white"/>
                     </svg>
+                    <span class="notification-badge" style="display: none; position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; background-color: red; border-radius: 50%;"></span>
                 </div>
             </div>
         </div>
@@ -1340,6 +1341,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         const notificationPopup = document.getElementById('notification-popup-overlay');
         const notificationList = document.getElementById('notification-list');
         const closeNotificationBtn = notificationPopup.querySelector('.popup-close-button');
+        const notificationBadge = document.querySelector('.notification-badge');
 
         // Close the notification popup
         closeNotificationBtn.addEventListener('click', () => {
@@ -1382,6 +1384,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                                 await markNotificationsAsRead([n.comment_id]);
                                 item.remove(); // 通知をDOMから削除
                                 if (notificationList.children.length === 0) { // 通知がなくなったらメッセージを表示
+                                    notificationBadge.style.display = 'none'; // バッジを非表示
                                     notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
                                 }
                                 window.location.href = item.href;
@@ -1393,12 +1396,28 @@ for ($day = 1; $day <= $days_in_month; $day++) {
 
                     } else {
                         notificationList.innerHTML = '<div class="popup-list-item">新しい通知はありません</div>';
+                        notificationBadge.style.display = 'none'; // 通知がなければバッジを非表示
                     }
                 } catch (error) {
                     console.error('通知の取得に失敗しました:', error);
                     notificationList.innerHTML = '<div class="popup-list-item">通知の取得に失敗しました</div>';
                 }
             });
+        }
+        
+        // ページ読み込み時に未読通知をチェックしてバッジを表示
+        async function checkUnreadNotifications() {
+            try {
+                const response = await fetch('get_notifications.php');
+                const result = await response.json();
+                if (result.success && result.notifications.length > 0) {
+                    notificationBadge.style.display = 'block';
+                } else {
+                    notificationBadge.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('未読通知のチェックに失敗しました:', error);
+            }
         }
 
         // 通知を既読としてマークする関数
@@ -1417,6 +1436,9 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 console.error('通知の既読化に失敗しました:', error);
             }
         }
+
+        // ページが読み込まれたときに未読通知をチェック
+        checkUnreadNotifications();
 
     </script>
 </body>

@@ -15,42 +15,27 @@ $is_admin = (isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
 $notifications = [];
 
 try {
-    if ($is_admin) {
-        // 管理者の場合：すべての日報に対する未読コメントを取得
-        $sql = "SELECT 
-                    n.notification_id AS comment_id,
-                    n.report_id,
-                    r.report_date,
-                    (SELECT name FROM User WHERE user_id = c.user_id) AS commenter_name,
-                    (SELECT name FROM User WHERE user_id = r.user_id) AS report_owner_name
-                FROM Notification n
-                JOIN Report r ON n.report_id = r.report_id
-                JOIN Comment c ON n.notification_id = c.comment_id
-                WHERE n.is_read = 0
-                ORDER BY n.created_at DESC";
-        $stmt = $mysqli->prepare($sql);
-    } else {
-        // 一般ユーザーの場合：自分宛のコメントのみ取得 (is_readに関わらず)
-        $sql = "SELECT 
-                    n.notification_id AS comment_id,
-                    n.report_id,
-                    r.report_date,
-                    (SELECT name FROM User WHERE user_id = c.user_id) AS commenter_name
-                FROM Notification n
-                JOIN Report r ON n.report_id = r.report_id
-                JOIN Comment c ON n.notification_id = c.comment_id
-                WHERE n.user_id = ? AND n.is_read = 0
-                ORDER BY n.created_at DESC";
-        $stmt = $mysqli->prepare($sql);
-        $stmt->bind_param('s', $recipient_user_id);
-    }
+    // 管理者・一般ユーザー共通の通知取得ロジック
+    $sql = "SELECT 
+                n.notification_id AS comment_id,
+                n.report_id,
+                r.report_date,
+                (SELECT name FROM User WHERE user_id = c.user_id) AS commenter_name,
+                (SELECT name FROM User WHERE user_id = r.user_id) AS report_owner_name
+            FROM Notification n
+            JOIN Report r ON n.report_id = r.report_id
+            JOIN Comment c ON n.notification_id = c.comment_id
+            WHERE n.user_id = ? AND n.is_read = 0
+            ORDER BY n.created_at DESC";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('s', $recipient_user_id);
 
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
-        if ($is_admin) {
-            $row['is_admin_view'] = true; // 管理者ビューであることをJS側に伝えるフラグ
-        }
+    if ($is_admin) {
+        $row['is_admin_view'] = true; // 管理者ビューであることをJS側に伝えるフラグ
+    }
         $notifications[] = $row;
     }
     $stmt->close();
