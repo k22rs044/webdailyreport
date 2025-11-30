@@ -25,18 +25,43 @@ if (empty($user_ids) || !is_array($user_ids)) {
 }
 
 try {
+    // トランザクションを開始
+    $mysqli->begin_transaction();
+
     // プレースホルダをIDの数だけ生成 (?,?,?)
     $placeholders = implode(',', array_fill(0, count($user_ids), '?'));
     $types = str_repeat('s', count($user_ids));
 
-    $sql = "DELETE FROM User WHERE user_id IN ($placeholders)";
-    $stmt = $mysqli->prepare($sql);
-    $stmt->bind_param($types, ...$user_ids);
-    $stmt->execute();
+    // 関連テーブルのデータを削除する
+    $related_tables = ['Report', 'Comment', 'Detail_Template', 'Task_Content', 'Notification'];
+    foreach ($related_tables as $table) {
+        $sql = "DELETE FROM {$table} WHERE user_id IN ($placeholders)";
+        $stmt = $mysqli->prepare($sql);
+        if ($stmt === false) {
+            throw new Exception("Failed to prepare statement for table: {$table}");
+        }
+        $stmt->bind_param($types, ...$user_ids);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    // 最後にUserテーブルからユーザーを削除
+    $sql_user = "DELETE FROM User WHERE user_id IN ($placeholders)";
+    $stmt_user = $mysqli->prepare($sql_user);
+    if ($stmt_user === false) {
+        throw new Exception("Failed to prepare statement for User table");
+    }
+    $stmt_user->bind_param($types, ...$user_ids);
+    $stmt_user->execute();
+    $stmt_user->close();
+
+    // トランザクションをコミット
+    $mysqli->commit();
 
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {
+    $mysqli->rollback(); // エラーが発生した場合はロールバック
     error_log("User Deletion Error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'サーバーエラーが発生しました。']);
 }
