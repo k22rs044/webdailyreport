@@ -31,19 +31,10 @@ $report = null;
 if ($report_id) {
     try {
         // プリペアドステートメントを使用して日報データを取得
-        $is_admin = (isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
-
-        if ($is_admin) {
-            // 管理者の場合はreport_idのみで検索
-            $sql = "SELECT report_date, task, detail, next_task, work_time FROM Report WHERE report_id = ?";
-            $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param('s', $report_id);
-        } else {
-            // 一般ユーザーの場合は自分の日報のみ
-            $sql = "SELECT report_date, task, detail, next_task, work_time FROM Report WHERE report_id = ? AND user_id = ?";
-            $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param('ss', $report_id, $user_id);
-        }
+        // 誰でもreport_idで日報を閲覧できるように修正
+        $sql = "SELECT report_date, task, detail, next_task, work_time FROM Report WHERE report_id = ?";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param('s', $report_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $db_report = $result->fetch_assoc();
