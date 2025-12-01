@@ -1109,6 +1109,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 item.addEventListener('click', () => {
                     workDetailsTextarea.value = item.getAttribute('data-content');
                     templatePopup.style.display = 'none';
+                    checkFormValidity(); // 登録ボタンの状態を更新
                 });
             });
 
@@ -1127,6 +1128,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                     if (activeSummaryInput) {
                         activeSummaryInput.value = item.getAttribute('data-content');
                     }
+                    checkFormValidity(); // 登録ボタンの状態を更新
                     summaryPopup.style.display = 'none';
                 });
             });
@@ -1154,19 +1156,12 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             
             endBtn.addEventListener('click', () => {
                 stopTimer();
-                timerPopup.style.display = 'none';
-                
-                // 必須修正: work_end と work_time_seconds を記録
+                timerPopup.style.display = 'none';                
                 endHidden.value = getCurrentTimeFormatted();
                 secondsHidden.value = totalSeconds;
-                
-                // メイン画面の表示用入力欄にも反映
                 workTimeInput.value = formatTime(totalSeconds);
-                
-                // タイマーの状態をリセット
                 timerInterval = null;
                 isPaused = false;
-                
                 displayMessage(`作業時間 ${workTimeInput.value} を記録しました。`, 'info');
             });
 
@@ -1248,11 +1243,25 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             reportForm.addEventListener('submit', async e => {
                 e.preventDefault(); // デフォルトのフォーム送信をキャンセル
 
+                // ユーザーが「登録」ボタンを明示的にクリックした場合のみ処理を進める
+                // Enterキーでの送信はできなくなりますが、意図しない自動登録を確実に防ぎます。
+                if (e.submitter !== submitButton) {
+                    displayMessage('日報は「登録」ボタンをクリックして提出してください。', 'error');
+                    return;
+                }
+
                 // 必須項目チェック
                 const task = workSummaryInput.value.trim();
                 const detail = workDetailsTextarea.value.trim();
-                if (task === '' || detail === '') {
-                    displayMessage('必須項目が未記入です', 'error');
+                const nextTask = nextWorkSummaryInput.value.trim();
+                const timeSeconds = parseInt(secondsHidden.value, 10) || 0;
+
+                if (task === '' || detail === '' || nextTask === '') {
+                    displayMessage('作業概要、作業詳細、次回作業概要は必須です。', 'error');
+                    return;
+                }
+                if (timeSeconds <= 0) {
+                    displayMessage('作業時間を入力または計測してください。', 'error');
                     return;
                 }
 
@@ -1271,41 +1280,19 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 await submitReport();
             });
 
-            // タイマーの「終了」ボタンクリック時
-            endBtn.addEventListener('click', async () => {
-                // タイマーを停止し、ポップアップを閉じる
-                stopTimer();
-                timerPopup.style.display = 'none';
-
-                // 終了時刻と作業時間を隠しフィールドに設定
-                endHidden.value = getCurrentTimeFormatted();
-                secondsHidden.value = totalSeconds;
-                workTimeInput.value = formatTime(totalSeconds); // 表示にも反映
-                displayMessage(`作業時間 ${workTimeInput.value} を記録しました。`, 'info');
-
-                // タイマーの状態をリセット
-                timerInterval = null;
-                isPaused = false;
-
-                // 必須項目が入力されていれば登録処理を実行
-                const task = workSummaryInput.value.trim();
-                const detail = workDetailsTextarea.value.trim();
-                if (task !== '' && detail !== '') {
-                    await submitReport(); // 登録処理を実行
-                }
-            });
-
             // --- Generic Popup Close Logic ---
-            document.querySelectorAll('.popup-overlay').forEach(popup => {
-                // タイマーポップアップ以外はオーバーレイクリックで閉じる
-                if (popup.id !== 'timer-popup-overlay') {
-                    popup.addEventListener('click', e => {
-                        if (e.target === popup) popup.style.display = 'none';
-                    });
-                }
-                const closeButton = popup.querySelector('.popup-close-button');
-                if (closeButton) closeButton.addEventListener('click', () => popup.style.display = 'none');
-            });
+            const setupPopup = (overlayId, closeButtonClass) => {
+                const overlay = document.getElementById(overlayId);
+                if (!overlay) return;
+
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay || (closeButtonClass && e.target.classList.contains(closeButtonClass.substring(1)))) {
+                        overlay.style.display = 'none';
+                    }
+                });
+            };
+            setupPopup('template-popup-overlay', '.popup-close-button');
+            setupPopup('summary-popup-overlay', '.popup-close-button');
 
             // --- カウントダウンタイマー ---
             const countdownElement = document.getElementById('countdown-timer');
@@ -1342,11 +1329,6 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         const notificationList = document.getElementById('notification-list');
         const closeNotificationBtn = notificationPopup.querySelector('.popup-close-button');
         const notificationBadge = document.querySelector('.notification-badge');
-
-        // Close the notification popup
-        closeNotificationBtn.addEventListener('click', () => {
-            notificationPopup.style.display = 'none';
-        });
 
         // ベルアイコンがクリックされたときの処理
         if (notificationBell) {
@@ -1404,6 +1386,13 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 }
             });
         }
+
+        // 通知ポップアップを閉じる処理 (オーバーレイまたは閉じるボタン)
+        notificationPopup.addEventListener('click', (e) => {
+            if (e.target === notificationPopup || e.target === closeNotificationBtn) {
+                notificationPopup.style.display = 'none';
+            }
+        });
         
         // ページ読み込み時に未読通知をチェックしてバッジを表示
         async function checkUnreadNotifications() {

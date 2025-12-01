@@ -241,7 +241,11 @@ if ($selected_id) {
             font-size: 16px;
             box-sizing: border-box;
         }
-        .popup-buttons { display: flex; gap: 20px; margin-top: 10px; }
+        .popup-buttons { 
+            display: flex; 
+            justify-content: center; /* ボタンを中央に配置 */
+            gap: 80px; /* ボタン間のスペースを調整 */
+            margin-top: 10px; }
         .popup-button {
             width: 130px;
             height: 42px;
