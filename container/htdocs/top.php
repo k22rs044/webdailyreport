@@ -10,13 +10,14 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id'];
 
-$current_date = date("n月j日");
+$current_date_display = date("n月j日");
+$today_date_db = date('Y-m-d');
+$todays_report_id = $user_id . '_' . $today_date_db; // 編集ボタン用にreport_idを生成
 
 // --- 当日の日報が既に存在するかチェック ---
 $todays_report = null;
 $is_report_submitted = false;
 try {
-    $today_date_db = date('Y-m-d');
     $sql_today = "SELECT task, detail, next_task, work_time FROM Report WHERE user_id = ? AND report_date = ?";
     $stmt_today = $mysqli->prepare($sql_today);
     $stmt_today->bind_param('ss', $user_id, $today_date_db);
@@ -833,7 +834,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                     <!-- メッセージ表示エリア -->
                     <div id="message-box" style="width: 100%; text-align: center; min-height: 20px; font-weight: bold;"></div>
 
-                    <h2><?php echo htmlspecialchars($current_date, ENT_QUOTES, 'UTF-8'); ?></h2>
+                    <h2><?php echo htmlspecialchars($current_date_display, ENT_QUOTES, 'UTF-8'); ?></h2>
 
                     <?php if ($is_report_submitted): ?>
                         <p style="color: #d9534f; font-weight: bold;">本日の日報は登録済みです。</p>
@@ -862,8 +863,11 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                         <input type="hidden" id="work-end-time" name="work_end" value="00:00:00">
                         <input type="hidden" id="work-time-seconds" name="work_time_seconds" value="0">
 
-                        <!-- 登録ボタンを追加 -->
-                        <button type="submit" class="form-button large" <?php if ($is_report_submitted) echo 'disabled'; ?>>登録</button>
+                        <?php if ($is_report_submitted): ?>
+                            <a href="reports_edit.php?id=<?php echo htmlspecialchars($todays_report_id, ENT_QUOTES, 'UTF-8'); ?>" class="form-button large" style="background-color: #5C9EDC; color: white;">編集</a>
+                        <?php else: ?>
+                            <button type="submit" class="form-button large" disabled>登録</button>
+                        <?php endif; ?>
 
                 </div>
             </section>

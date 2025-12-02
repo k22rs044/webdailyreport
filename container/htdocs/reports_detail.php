@@ -26,13 +26,14 @@ if ($user_id) {
     } catch (Exception $e) { error_log("Error fetching current user name: " . $e->getMessage()); }
 }
 $report = null;
+$is_editable = false; // 編集可能かどうかのフラグ
 
 
 if ($report_id) {
     try {
         // プリペアドステートメントを使用して日報データを取得
         // 誰でもreport_idで日報を閲覧できるように修正
-        $sql = "SELECT report_date, task, detail, next_task, work_time FROM Report WHERE report_id = ?";
+        $sql = "SELECT report_date, task, detail, next_task, work_time, user_id FROM Report WHERE report_id = ?";
         $stmt = $mysqli->prepare($sql);
         $stmt->bind_param('s', $report_id);
         $stmt->execute();
@@ -53,6 +54,13 @@ if ($report_id) {
                 'details' => $db_report['detail'],
                 'next_summary' => $db_report['next_task']
             ];
+
+            // 編集可能かどうかのチェック
+            // ログインユーザーIDと日報のユーザーIDが一致し、かつ日報の日付が今日であるか
+            $today = new DateTime('now', new DateTimeZone('Asia/Tokyo'));
+            if ($user_id === $db_report['user_id'] && $date->format('Y-m-d') === $today->format('Y-m-d')) {
+                $is_editable = true;
+            }
         }
         $stmt->close();
     } catch (Exception $e) {
@@ -194,9 +202,9 @@ if ($report_id) {
             gap: 15px;
         }
         .report-details h2 {
-            font-size: 32px;
+            font-size: 32px; 
             font-weight: 400;
-            margin: 5px 0 10px 0;
+            margin: 0 0 10px 0;
         }
         .detail-item {
             background: #FFFFFF;
@@ -434,6 +442,11 @@ if ($report_id) {
                     <!-- Report Details -->
                     <section class="report-details">
                         <?php if ($report): ?>
+                            <?php if ($is_editable): ?>
+                                <a href="reports_edit.php?id=<?php echo htmlspecialchars($report_id, ENT_QUOTES, 'UTF-8'); ?>" class="edit-button" style="align-self: flex-end; background: #5C9EDC; color: white; padding: 8px 16px; border-radius: 5px; text-decoration: none;">
+                                    編集
+                                </a>
+                            <?php endif; ?>
                             <h2><?php echo htmlspecialchars($report['date'], ENT_QUOTES, 'UTF-8'); ?></h2>
                             <div class="detail-item"><?php echo htmlspecialchars($report['summary'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="detail-item time"><?php echo htmlspecialchars($report['work_time'], ENT_QUOTES, 'UTF-8'); ?></div>
