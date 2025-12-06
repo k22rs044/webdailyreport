@@ -810,8 +810,8 @@ if ($selected_id) {
 
                 // PHPから埋め込まれたデータを使用
                 const templateId = '<?php echo $selected_template['id'] ?? ''; ?>';
-                const templateTitle = '<?php echo htmlspecialchars($selected_template['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>';
-                const templateContent = '<?php echo htmlspecialchars(str_replace(["\r\n", "\r", "\n"], "\\n", $selected_template['content'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>';
+                const templateTitle = '<?php echo $selected_template['title'] ?? ''; ?>';
+                const templateContent = '<?php echo str_replace(["\r\n", "\r", "\n"], "\\n", $selected_template['content'] ?? ''); ?>';
 
                 document.getElementById('edit-template-id').value = templateId;
                 document.getElementById('edit-title').value = templateTitle;

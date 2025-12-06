@@ -1200,10 +1200,22 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 }
 
                 const newTotalSeconds = totalMinutes * 60;
-                secondsHidden.value = newTotalSeconds; // 隠しフィールドに秒数を設定
-                workTimeInput.value = formatTime(newTotalSeconds); // 表示を HH:MM:SS 形式に統一
-                totalSeconds = newTotalSeconds; // 内部のタイマー状態も更新
-                displayMessage(`作業時間 ${workTimeInput.value} を設定しました。`, 'info');
+
+                // 24時間 (1440分) を上限とする
+                let displayTime = formatTime(newTotalSeconds);
+                let finalSeconds = newTotalSeconds;
+                let message = `作業時間 ${displayTime} を設定しました。`;
+
+                if (newTotalSeconds >= 86400) { // 24時間 (86400秒) 以上の場合
+                    finalSeconds = 86400;
+                    displayTime = '24:00:00';
+                    message = '作業時間は24時間までです。24時間に設定しました。';
+                }
+
+                secondsHidden.value = finalSeconds; // 隠しフィールドに秒数を設定
+                workTimeInput.value = displayTime; // 表示を更新
+                totalSeconds = finalSeconds; // 内部のタイマー状態も更新
+                displayMessage(message, 'info');
             });
 
             // --- 日報登録処理 ---

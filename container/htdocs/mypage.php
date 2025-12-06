@@ -1095,7 +1095,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                     <input type="email" id="new-email" name="new_email">
                 </div>
                 <div class="popup-buttons">
-                   <button type="button" id="cancel-email-change" class="popup-button" style="background: #5C9EDC;">キャンセル</button>
+                    <button type="button" id="cancel-email-change" class="popup-button" style="background: #5C9EDC;">キャンセル</button>
                     <button type="submit" class="popup-button" style="background: #34B717;">変更</button>
                 </div>
             </form>

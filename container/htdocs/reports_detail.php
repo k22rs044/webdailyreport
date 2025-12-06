@@ -279,6 +279,9 @@ if ($report_id) {
             border: none;
             padding: 10px 15px;
             font-size: 20px;
+            resize: none; /* ユーザーによるリサイズを無効化 */
+            font-family: 'Inter', sans-serif; /* フォントを継承 */
+            line-height: 1.4; /* 行間を他の要素と合わせる */
         }
         .comment-input::placeholder {
             color: #8E8B8B;
@@ -484,7 +487,7 @@ if ($report_id) {
                         </div>
                         <form id="comment-form" action="submit_comment.php" method="post" class="comment-form">
                             <input type="hidden" name="report_id" value="<?php echo htmlspecialchars($report_id, ENT_QUOTES, 'UTF-8'); ?>">
-                            <input type="text" name="comment" class="comment-input" placeholder="コメントを入力">
+                            <textarea name="comment" class="comment-input" placeholder="コメントを入力" rows="1"></textarea>
                             <button type="submit" class="comment-submit-button">送信</button>
                         </form>
                     </aside>
@@ -498,13 +501,13 @@ if ($report_id) {
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const commentForm = document.getElementById('comment-form');
-        const commentInput = document.querySelector('input[name="comment"]');
+        const commentInput = document.querySelector('textarea[name="comment"]');
+        const submitButton = commentForm.querySelector('.comment-submit-button');
         const commentsList = document.querySelector('.comments-list');
 
-        if (commentForm) {
-            commentForm.addEventListener('submit', async function(e) {
-                e.preventDefault(); // フォームのデフォルト送信を防止
-
+        // コメントを送信する関数
+        const submitComment = async () => {
+            try {
                 const formData = new FormData(commentForm);
                 const commentText = formData.get('comment').trim();
 
@@ -513,30 +516,49 @@ if ($report_id) {
                     return;
                 }
 
-                try {
-                    const response = await fetch('submit_comment.php', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const result = await response.json();
+                const response = await fetch('submit_comment.php', { method: 'POST', body: formData });
+                const result = await response.json();
 
-                    if (result.success) {
-                        // 新しいコメントをリストに追加
-                        const newCommentDiv = document.createElement('div');
-                        newCommentDiv.classList.add('comment-card');
-
-                        newCommentDiv.innerHTML = `<div class="comment-header">${result.comment.comment_at} ${result.comment.author_name}</div><div class="comment-body">${result.comment.comment_content}</div>`;
-
-                        commentsList.prepend(newCommentDiv); // column-reverseのため、prependで末尾に追加される
-                        commentInput.value = ''; // 入力フィールドをクリア
-                        // column-reverseなのでスクロールは不要
-                    } else {
-                        alert('コメントの投稿に失敗しました: ' + result.message);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('コメントの送信中にエラーが発生しました。');
+                if (result.success) {
+                    const newCommentDiv = document.createElement('div');
+                    newCommentDiv.classList.add('comment-card');
+                    newCommentDiv.innerHTML = `<div class="comment-header">${result.comment.comment_at} ${result.comment.author_name}</div><div class="comment-body">${result.comment.comment_content}</div>`;
+                    commentsList.prepend(newCommentDiv);
+                    commentInput.value = '';
+                    commentInput.style.height = 'auto'; // 高さをリセット
+                } else {
+                    alert('コメントの投稿に失敗しました: ' + result.message);
                 }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('コメントの送信中にエラーが発生しました。');
+            }
+        };
+
+        if (commentForm) {
+            // 送信ボタンクリック時の処理
+            commentForm.addEventListener('submit', function(e) {
+                e.preventDefault(); // デフォルトの送信をキャンセル
+                submitComment();
+            });
+
+            // テキストエリアでのキー入力処理
+            commentInput.addEventListener('keydown', function(e) {
+                // Ctrl+Enter または Cmd+Enter で送信
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    submitComment();
+                }
+                // Enterキーのみの場合はフォーム送信を防止 (改行はtextareaのデフォルト動作)
+                else if (e.key === 'Enter' && !e.shiftKey) {
+                    // 何もしない（デフォルトの改行動作に任せる）
+                }
+            });
+
+            // 入力に応じてテキストエリアの高さを自動調整
+            commentInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
             });
         }
     });
@@ -641,8 +663,3 @@ if ($report_id) {
     });
 </script>
 </html>
-
-
-
-<!--
-[PROMPT_SUGGESTION]「送信」ボタンを押したときにコメントを保存する`submit_comment.php`を作成してください。[/PROMPT_SUGGESTION]

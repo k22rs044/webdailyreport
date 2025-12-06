@@ -83,6 +83,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $report) {
     }
 }
 
+// --- 作業詳細テンプレートを取得 ---
+$templates = [];
+try {
+    $sql_templates = "SELECT template_id, title, content FROM Detail_Template WHERE user_id = ? ORDER BY created_at DESC, template_id DESC";
+    $stmt_templates = $mysqli->prepare($sql_templates);
+    $stmt_templates->bind_param('s', $user_id);
+    $stmt_templates->execute();
+    $result_templates = $stmt_templates->get_result();
+    while ($row = $result_templates->fetch_assoc()) {
+        $templates[] = $row;
+    }
+    $stmt_templates->close();
+} catch (Exception $e) {
+    error_log("Error fetching templates for reports_edit.php: " . $e->getMessage());
+}
+
+// --- 作業概要リストを取得 ---
+$next_tasks = [];
+try {
+    $sql_next_tasks = "SELECT task_id, task_content FROM Task_Content WHERE user_id = ? ORDER BY task_at DESC, task_id DESC";
+    $stmt_next_tasks = $mysqli->prepare($sql_next_tasks);
+    $stmt_next_tasks->bind_param('s', $user_id);
+    $stmt_next_tasks->execute();
+    $result_next_tasks = $stmt_next_tasks->get_result();
+    while ($row_next_task = $result_next_tasks->fetch_assoc()) {
+        $next_tasks[] = $row_next_task;
+    }
+    $stmt_next_tasks->close();
+} catch (Exception $e) {
+    error_log("Error fetching next_tasks for reports_edit.php: " . $e->getMessage());
+}
+
 // 作業時間を時間と分に分解
 $work_hours_val = 0;
 $work_minutes_val = 0;
@@ -120,15 +152,60 @@ $display_time_val = "{$work_hours_val}時間{$work_minutes_val}分";
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; font-size: 18px; margin-bottom: 8px; }
         .form-group input[type="text"], .form-group textarea { width: 100%; background: #FFFFFF; border-radius: 7px; border: 1px solid #ccc; padding: 8px 12px; box-sizing: border-box; font-size: 18px; font-family: 'Inter', sans-serif; }
-        .form-group textarea { height: 200px; resize: vertical; }
-        .time-input-group { display: flex; align-items: center; gap: 10px; }
-        .time-input-group input { width: 100px; }
-        .time-input-group span { font-size: 20px; }
+        .form-group textarea { height: 262px; resize: vertical; padding: 12px; }
+
+        /* 作業時間入力欄のスタイル調整 */
+        .time-input-group {
+            display: flex;
+            justify-content: flex-start; /* 左揃えに変更 */
+        }
+        #work-time-input {
+            width: calc(100% - 100px); /* 「リスト」ボタン(90px)とgap(10px)の幅を引いて右端を揃える */
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+        }
+        .form-row input, .form-row textarea {
+            flex-grow: 1;
+        }
+        .form-row .form-button {
+            display: flex; /* aタグをflexにして中央揃えを有効に */
+            justify-content: center; /* aタグをflexにして中央揃えを有効に */
+            align-items: center; /* aタグをflexにして中央揃えを有効に */
+            width: 90px;
+            height: 40px;
+            background: #8CBAE6;
+            border-radius: 7px;
+            border: none;
+            color: #000000;
+            cursor: pointer;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .form-row .form-button.large-btn {
+            align-self: flex-start;
+            margin-top: 10px;
+        }
+
         .button-group { display: flex; justify-content: center; gap: 20px; margin-top: 30px; }
         .submit-button, .cancel-button { padding: 8px 30px; border: none; border-radius: 7px; font-size: 18px; cursor: pointer; text-decoration: none; }
         .submit-button { background: #5C9EDC; color: white; }
         .cancel-button { background: #B0B0B0; color: white; }
         .error-message { color: red; text-align: center; margin-bottom: 20px; }
+
+        /* Popup Styles (from top.php) */
+        .popup-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .popup-window { position: relative; background: #FFFFFF; border: 5px solid #5C9EDC; border-radius: 10px; box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; align-items: center; width: 384px; height: 600px; }
+        .popup-title { font-size: 16px; line-height: 19px; text-align: center; color: #000000; margin-bottom: 20px; }
+        .popup-list { width: 100%; max-height: 480px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 0 10px; margin-bottom: 20px; }
+        .popup-list-item { width: 100%; height: 50px; background: #E0E7ED; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 16px; color: #8E8B8B; cursor: pointer; flex-shrink: 0; }
+        .popup-list-item:hover { background-color: #d1d9e0; }
+        .popup-close-button { margin-top: auto; padding: 8px 25px; background: #8CBAE6; border: none; border-radius: 7px; font-size: 16px; cursor: pointer; }
+
     </style>
 </head>
 <body>
@@ -170,26 +247,24 @@ $display_time_val = "{$work_hours_val}時間{$work_minutes_val}分";
 
                 <?php if ($report): ?>
                 <form action="reports_edit.php?id=<?php echo htmlspecialchars($report_id, ENT_QUOTES, 'UTF-8'); ?>" method="post">
-                    <div class="form-group">
-                        <label for="summary">作業概要</label>
-                        <input type="text" id="summary" name="summary" value="<?php echo htmlspecialchars($report['task'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
+                    <div class="form-group form-row">
+                        <input type="text" id="summary" name="summary" value="<?php echo $report['task'] ?? ''; ?>" placeholder="作業概要を入力" required>
+                        <button type="button" id="show-summary-popup" class="form-button">リスト</button>
                     </div>
 
-                    <div class="form-group">
-                        <label for="work_hours">作業時間</label>
-                        <!-- top.phpと同様の自由入力形式に変更 -->
-                        <input type="text" id="work-time-input" name="display_time" value="<?php echo htmlspecialchars($display_time_val, ENT_QUOTES, 'UTF-8'); ?>" placeholder="例: 1:30" required>
-                        <input type="hidden" id="work-time-minutes" name="work_time_minutes" value="<?php echo htmlspecialchars($report['work_time'] ?? 0, ENT_QUOTES, 'UTF-8'); ?>">
+                    <div class="form-group time-input-group">
+                        <input type="text" id="work-time-input" name="display_time" value="<?php echo $display_time_val; ?>" placeholder="例: 1:30 または 1時間30分" required>
+                        <input type="hidden" id="work-time-minutes" name="work_time_minutes" value="<?php echo $report['work_time'] ?? 0; ?>">
                     </div>
 
-                    <div class="form-group">
-                        <label for="details">作業詳細</label>
-                        <textarea id="details" name="details" required><?php echo htmlspecialchars($report['detail'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+                    <div class="form-group form-row">
+                        <textarea id="details" name="details" placeholder="作業詳細を入力" required><?php echo $report['detail'] ?? ''; ?></textarea>
+                        <button type="button" id="show-template-popup" class="form-button large-btn">テンプレート</button>
                     </div>
 
-                    <div class="form-group">
-                        <label for="next_summary">次回作業概要</label>
-                        <input type="text" id="next_summary" name="next_summary" value="<?php echo htmlspecialchars($report['next_task'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
+                    <div class="form-group form-row">
+                        <input type="text" id="next_summary" name="next_summary" value="<?php echo $report['next_task'] ?? ''; ?>" placeholder="次回作業概要を入力" required>
+                        <button type="button" id="show-next-summary-popup" class="form-button">リスト</button>
                     </div>
 
                     <div class="button-group">
@@ -202,12 +277,40 @@ $display_time_val = "{$work_hours_val}時間{$work_minutes_val}分";
                 <?php endif; ?>
             </div>
         </main>
+
+        <!-- Template Popup -->
+        <div id="template-popup-overlay" class="popup-overlay">
+            <div class="popup-window">
+                <h3 class="popup-title">作業詳細テンプレートリスト</h3>
+                <div class="popup-list">
+                    <?php foreach ($templates as $template): ?>
+                        <div class="popup-list-item" data-content="<?php echo htmlspecialchars($template['content'], ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php echo htmlspecialchars($template['title'], ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <button class="popup-close-button">閉じる</button>
+            </div>
+        </div>
+
+        <!-- Summary Popup -->
+        <div id="summary-popup-overlay" class="popup-overlay">
+            <div class="popup-window">
+                <h3 class="popup-title">作業概要リスト</h3>
+                <div class="popup-list">
+                    <?php foreach ($next_tasks as $task): ?>
+                        <div class="popup-list-item" data-content="<?php echo htmlspecialchars($task['task_content'], ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php echo htmlspecialchars($task['task_content'], ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <button class="popup-close-button">閉じる</button>
+            </div>
+        </div>
     </div>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         const workTimeInput = document.getElementById('work-time-input');
-        const workTimeMinutesHidden = document.getElementById('work-time-minutes');
-        const form = document.querySelector('form');
 
         function updateTotalMinutes() {
             const input = workTimeInput.value.trim();
@@ -249,9 +352,58 @@ $display_time_val = "{$work_hours_val}時間{$work_minutes_val}分";
 
         workTimeInput.addEventListener('blur', updateTotalMinutes);
 
-        if (form) {
-            form.addEventListener('submit', updateTotalMinutes);
+
+        // --- Popup Logic ---
+        const summaryInput = document.getElementById('summary');
+        const detailsTextarea = document.getElementById('details');
+        const nextSummaryInput = document.getElementById('next_summary');
+
+        const templatePopup = document.getElementById('template-popup-overlay');
+        const summaryPopup = document.getElementById('summary-popup-overlay');
+
+        const showTemplateBtn = document.getElementById('show-template-popup');
+        const showSummaryBtn = document.getElementById('show-summary-popup');
+        const showNextSummaryBtn = document.getElementById('show-next-summary-popup');
+
+        let activeSummaryInput = null;
+
+        // Open popups
+        if(showTemplateBtn) {
+            showTemplateBtn.addEventListener('click', () => { templatePopup.style.display = 'flex'; });
         }
+        showSummaryBtn.addEventListener('click', () => {
+            activeSummaryInput = summaryInput;
+            summaryPopup.style.display = 'flex';
+        });
+        showNextSummaryBtn.addEventListener('click', () => {
+            activeSummaryInput = nextSummaryInput;
+            summaryPopup.style.display = 'flex';
+        });
+
+        // Close popups
+        [templatePopup, summaryPopup].forEach(popup => {
+            popup.addEventListener('click', (e) => {
+                if (e.target === popup || e.target.classList.contains('popup-close-button')) {
+                    popup.style.display = 'none';
+                }
+            });
+        });
+
+        // Set content from popups
+        templatePopup.querySelectorAll('.popup-list-item').forEach(item => {
+            if(item) {
+                item.addEventListener('click', () => {
+                    detailsTextarea.value = item.getAttribute('data-content');
+                    templatePopup.style.display = 'none';
+                });
+            }
+        });
+        summaryPopup.querySelectorAll('.popup-list-item').forEach(item => { //
+            item.addEventListener('click', () => {
+                if (activeSummaryInput) activeSummaryInput.value = item.getAttribute('data-content');
+                summaryPopup.style.display = 'none';
+            });
+        });
     });
     </script>
 </body>

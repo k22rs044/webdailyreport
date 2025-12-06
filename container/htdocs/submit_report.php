@@ -62,8 +62,8 @@ try {
     }
     
     // 型のバインド: report_id(s), user_id(s), report_date(s), task(s), detail(s), next_task(s), work_start(s), work_end(s), work_time(i)
-    // 9つの変数に対応する 'ssssssssi' に修正
-    $stmt->bind_param('ssssssssi', 
+    // 9つの変数に対応する型を指定します。work_timeはINT型なので 'i' を使用します。
+    $stmt->bind_param('ssssssssi',
                     $report_id, 
                     $user_id, 
                     $report_date, 

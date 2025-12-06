@@ -551,11 +551,11 @@ try {
         <main class="main-content">
             <div class="scope-switch">
                 <a href="?scope=all&<?php echo http_build_query(array_diff_key($_GET, ['scope' => ''])); ?>" 
-                   class="<?php echo ($scope === 'all') ? 'active' : ''; ?>">
+                    class="<?php echo ($scope === 'all') ? 'active' : ''; ?>">
                     全員の日報
                 </a>
                 <a href="?scope=mine&<?php echo http_build_query(array_diff_key($_GET, ['scope' => ''])); ?>" 
-                   class="<?php echo ($scope === 'mine') ? 'active' : ''; ?>">
+                    class="<?php echo ($scope === 'mine') ? 'active' : ''; ?>">
                     自分の日報
                 </a>
             </div>

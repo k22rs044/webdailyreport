@@ -31,17 +31,18 @@ try {
     // トランザクションを開始
     $mysqli->begin_transaction();
 
-    // 1. ユーザーの既存テンプレート数を数える
-    $count_sql = "SELECT COUNT(*) as template_count FROM Detail_Template WHERE user_id = ?";
-    $count_stmt = $mysqli->prepare($count_sql);
-    $count_stmt->bind_param('s', $user_id);
-    $count_stmt->execute();
-    $result = $count_stmt->get_result();
-    $row = $result->fetch_assoc();
-    $count_stmt->close();
+    // 1. ユーザーの既存テンプレートIDから最大の連番を取得する
+    // template_id は 'user_id_1', 'user_id_2' のような形式
+    $seq_sql = "SELECT MAX(CAST(SUBSTRING_INDEX(template_id, '_', -1) AS UNSIGNED)) as max_sequence FROM Detail_Template WHERE user_id = ?";
+    $seq_stmt = $mysqli->prepare($seq_sql);
+    $seq_stmt->bind_param('s', $user_id);
+    $seq_stmt->execute();
+    $result = $seq_stmt->get_result()->fetch_assoc();
+    $seq_stmt->close();
 
     // 2. 新しい連番とtemplate_idを生成
-    $new_sequence = $row['template_count'] + 1;
+    // 既存のテンプレートがない場合は1から、ある場合は最大値+1から始める
+    $new_sequence = ($result['max_sequence'] ?? 0) + 1;
     $new_template_id = $user_id . '_' . $new_sequence;
 
     // 3. 新しいテンプレートを挿入
