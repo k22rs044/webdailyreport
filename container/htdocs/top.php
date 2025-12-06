@@ -1081,12 +1081,17 @@ for ($day = 1; $day <= $days_in_month; $day++) {
 
                 if (startHidden.value === '00:00:00') {
                     startHidden.value = getCurrentTimeFormatted();
+                    elapsedTimeBeforePause = 0; // 新規開始時はリセット
                     displayMessage('作業時間の計測を開始しました。', 'info');
                 } else {
                     displayMessage('作業時間の計測を再開しました。', 'info');
                 }
 
                 startTime = Date.now(); // 計測開始/再開時刻を記録
+                // 既にタイマーが動いていたら、新しいインターバルを開始する前に古いものをクリア
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                }
                 timerInterval = setInterval(() => {
                     const now = Date.now();
                     const elapsedSinceStart = Math.floor((now - startTime) / 1000);
@@ -1095,7 +1100,10 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 }, 1000);
             };
             
-            const stopTimer = () => clearInterval(timerInterval);
+            const stopTimer = () => {
+                clearInterval(timerInterval);
+                timerInterval = null; // タイマーIDをクリア
+            };
             
             const resetTimer = () => {
                 stopTimer();
@@ -1104,7 +1112,6 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 startTime = 0;
                 timerInterval = null;
             };
-
             // --- Template Popup ---
             const showTemplateBtn = document.getElementById('show-template-popup');
             showTemplateBtn.addEventListener('click', () => { templatePopup.style.display = 'flex'; });
@@ -1116,6 +1123,11 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                     checkFormValidity(); // 登録ボタンの状態を更新
                 });
             });
+            // 提出済みの場合はボタンを無効化するため、イベントリスナーの登録前にチェック
+            if (showTemplateBtn) {
+                showTemplateBtn.addEventListener('click', () => { templatePopup.style.display = 'flex'; });
+            }
+
 
             // --- Summary Popup ---
             const openSummaryPopup = (targetInput) => {
@@ -1139,20 +1151,21 @@ for ($day = 1; $day <= $days_in_month; $day++) {
 
             // --- Timer Popup ---
             startTimerBtn.addEventListener('click', () => {
-                // タイマーが動いていない場合のみリセット
-                if (!timerInterval) resetTimer();
-                timerDisplay.textContent = formatTime(totalSeconds);
+                // 既存の時間を引き継ぐ
+                elapsedTimeBeforePause = parseInt(secondsHidden.value, 10) || 0;
+                totalSeconds = elapsedTimeBeforePause;
+                timerDisplay.textContent = formatTime(elapsedTimeBeforePause);
                 startTimer();
                 timerPopup.style.display = 'flex';
             });
             
             pauseBtn.addEventListener('click', () => {
-                isPaused = !isPaused;
-                if (isPaused) {
+                if (timerInterval) { // タイマーが動いている場合（一時停止する）
                     stopTimer();
                     elapsedTimeBeforePause = totalSeconds; // 一時停止時点の経過秒数を保存
                     pauseBtn.textContent = '再開';
                     displayMessage(`計測を一時停止しました。現在: ${formatTime(totalSeconds)}`, 'info');
+                    isPaused = true; // isPausedフラグを更新
                 } else {
                     startTimer(); // 再開
                 }
@@ -1171,12 +1184,17 @@ for ($day = 1; $day <= $days_in_month; $day++) {
 
             // --- 手動での時間入力処理 ---
             workTimeInput.addEventListener('blur', () => {
+                // タイマーが作動中の場合は、手動入力の処理を一切行わない
+                if (timerInterval) return;
+
                 const input = workTimeInput.value.trim();
-                if (input === '') {
-                    // 入力が空の場合はタイマーもリセット
+                // タイマーが作動中でなく、かつ入力が空の場合のみリセット
+                if (input === '' && !timerInterval) {
+                    // 入力が空でタイマーも動いていない場合はリセット
                     secondsHidden.value = 0;
                     startHidden.value = '00:00:00';
                     endHidden.value = '00:00:00';
+                    totalSeconds = 0;
                     resetTimer();
                     return;
                 }
