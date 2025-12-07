@@ -33,10 +33,19 @@ try {
         $error_message = "指定された日報が見つかりません。";
     } else {
         // 編集権限のチェック
-        $report_date = new DateTime($db_report['report_date'], new DateTimeZone('Asia/Tokyo'));
-        $today = new DateTime('now', new DateTimeZone('Asia/Tokyo'));
+        $report_date_str = $db_report['report_date']; // 'Y-m-d'
+        $now = new DateTime('now', new DateTimeZone('Asia/Tokyo'));
 
-        if ($db_report['user_id'] != $user_id || $report_date->format('Y-m-d') !== $today->format('Y-m-d')) {
+        // アプリケーション上の「今日」の日付を決定する
+        // 午前4時より前は前日として扱う
+        if ((int)$now->format('H') < 4) {
+            $app_today_str = (clone $now)->modify('-1 day')->format('Y-m-d');
+        } else {
+            $app_today_str = $now->format('Y-m-d');
+        }
+
+        // 他人の日報、または編集期間外の日報は編集不可
+        if ($db_report['user_id'] != $user_id || $report_date_str !== $app_today_str) {
             // 他人の日報、または過去の日報は編集不可
             $_SESSION['error_message'] = "この日報を編集する権限がありません。";
             header('Location: reports_detail.php?id=' . $report_id);

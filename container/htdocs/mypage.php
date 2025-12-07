@@ -935,7 +935,8 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 <p class="email"><?php echo htmlspecialchars($user_email, ENT_QUOTES, 'UTF-8'); ?></p>
                 <div class="user-actions">
                     <a href="#" id="show-password-popup" class="action-button">パスワード変更</a>
-                    <a href="#" id="show-email-popup" class="action-button">メールアドレス変更</a>
+                    <!-- <a href="#" id="show-email-popup" class="action-button">メールアドレス変更</a> -->
+                    <a href="#" id="show-email-popup" class="action-button">まだです</a>
                 </div>
             </div>
             <div class="calendar-card">
@@ -1096,23 +1097,6 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 </div>
                 <div class="popup-buttons">
                     <button type="button" id="cancel-email-change" class="popup-button" style="background: #5C9EDC;">キャンセル</button>
-                    <button type="submit" class="popup-button" style="background: #34B717;">変更</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Name Change Popup -->
-    <div id="name-popup-overlay" class="popup-overlay">
-        <div class="name-change-popup">
-            <h3 class="popup-title">氏名変更</h3>
-            <form id="name-change-form" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-                <div class="form-group">
-                    <label for="new-name">登録する氏名を入力</label>
-                    <input type="text" id="new-name" name="new_name" value="<?php echo htmlspecialchars($user_name, ENT_QUOTES, 'UTF-8'); ?>">
-                </div>
-                <div class="popup-buttons">
-                    <button type="button" id="cancel-name-change" class="popup-button" style="background: #5C9EDC;">キャンセル</button>
                     <button type="submit" class="popup-button" style="background: #34B717;">変更</button>
                 </div>
             </form>
