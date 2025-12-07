@@ -9,12 +9,22 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id'];
 
-// 週の開始日（火曜日）を計算
-$today = new DateTime();
-$day_of_week = (int)$today->format('w'); // 0:日曜, 1:月曜, 2:火曜...
-$days_to_subtract = ($day_of_week < 2) ? ($day_of_week + 7 - 2) : ($day_of_week - 2);
-$start_date = (new DateTime())->sub(new DateInterval("P{$days_to_subtract}D"));
+// --- 週の計算ロジックを修正 ---
+// URLから基準日を取得。なければ今日を基準にする
+$base_date_str = $_GET['week'] ?? 'today';
+$base_date = new DateTime($base_date_str, new DateTimeZone('Asia/Tokyo'));
 
+// 基準日が属する週の開始日（火曜日）を計算
+$day_of_week = (int)$base_date->format('w'); // 0:日曜, 1:月曜, 2:火曜...
+$days_to_subtract = ($day_of_week < 2) ? ($day_of_week + 7 - 2) : ($day_of_week - 2);
+$start_date = (clone $base_date)->sub(new DateInterval("P{$days_to_subtract}D"));
+$end_date = (clone $start_date)->add(new DateInterval('P6D'));
+
+// --- ナビゲーション用のリンクを生成 ---
+$prev_week_date = (clone $start_date)->sub(new DateInterval('P7D'))->format('Y-m-d');
+$next_week_date = (clone $start_date)->add(new DateInterval('P7D'))->format('Y-m-d');
+
+// --- 表示処理 ---
 $weekly_reports = [];
 $current_date = clone $start_date;
 $weekdays_jp = ['日', '月', '火', '水', '木', '金', '土'];
@@ -122,6 +132,26 @@ for ($i = 0; $i < 7; $i++) {
             padding: 70px 20px 20px 20px; /* ヘッダーの高さ(50px)を考慮 */
         }
 
+        /* 週ナビゲーション */
+        .week-navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .week-navigation a {
+            color: #5C9EDC;
+            font-weight: 400;
+        }
+        .week-navigation a:hover {
+            text-decoration: underline;
+        }
+        .current-week-display {
+            color: #000000;
+        }
         .report-list {
             display: flex;
             flex-direction: column;
@@ -289,6 +319,14 @@ for ($i = 0; $i < 7; $i++) {
 
     <div class="container">
         <main class="main-content">
+            <div class="week-navigation">
+                <a href="?week=<?php echo $prev_week_date; ?>">＜ 前の週</a>
+                <span class="current-week-display">
+                    <?php echo $start_date->format('n月j日'); ?> - <?php echo $end_date->format('n月j日'); ?>
+                </span>
+                <a href="?week=<?php echo $next_week_date; ?>">次の週 ＞</a>
+            </div>
+
             <section class="report-list">
                 <!-- Header Row -->
                 <div class="report-header">

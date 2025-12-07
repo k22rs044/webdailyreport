@@ -926,7 +926,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
                 </div>
                 <p class="id"><?php echo htmlspecialchars($user_student_id, ENT_QUOTES, 'UTF-8'); ?></p>
                 <div class="switch-field"> <!-- 締め切り通知スイッチ -->
-                    <span class="label">締め切り通知</span>
+                    <span class="label">締め切り通知(まだ)</span>
                     <div class="switch" id="notification-switch" data-initial-status="<?php echo $user_receive_notifications ? '1' : '0'; ?>">
                         <div class="knob"></div>
                         <input type="hidden" id="notification-status" name="receive_notifications" value="<?php echo $user_receive_notifications ? '1' : '0'; ?>">
