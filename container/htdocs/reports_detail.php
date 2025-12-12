@@ -13,6 +13,15 @@ $report_id = $_GET['id'] ?? null; // report_id を取得
 // 現在ログインしているユーザーのIDを取得
 $user_id = $_SESSION['user_id'] ?? null;
 
+// 一覧画面からの絞り込み条件を取得
+$filter_params = [];
+if (isset($_GET['scope'])) $filter_params['scope'] = $_GET['scope'];
+if (isset($_GET['keyword'])) $filter_params['keyword'] = $_GET['keyword'];
+if (isset($_GET['period'])) $filter_params['period'] = $_GET['period'];
+if (isset($_GET['start_date'])) $filter_params['start_date'] = $_GET['start_date'];
+if (isset($_GET['end_date'])) $filter_params['end_date'] = $_GET['end_date'];
+$filter_query = http_build_query($filter_params);
+
 // 現在ログインしているユーザーの名前を取得
 $current_user_name = "不明なユーザー";
 if ($user_id) {
@@ -263,9 +272,10 @@ if ($report_id) {
             padding: 15px;
             /*min-height: 72px;*/
             font-size: 20px;
-            color: #333;
-            line-height: 1.4;
-            white-space: pre-wrap; /* 改行をそのまま表示 */
+            color: #333; /* 文字色*/
+            line-height: 1.4; /* 行の高さ*/
+            white-space: pre-wrap; /* 入力された改行をそのまま表示 */
+            overflow-wrap: break-word; /* ボックスの幅に合わせて自動で改行 */
         }
         .comment-form {
             display: flex;
@@ -437,7 +447,7 @@ if ($report_id) {
     <div class="container">
         <main class="main-content">
             <div style="width: 100%;">
-                <a href="reports_list.php" class="back-button">
+                <a href="reports_list.php?<?php echo $filter_query; ?>" class="back-button">
                     <div class="back-button-arrow"></div>
                     <span>一覧</span>
                 </a>

@@ -26,6 +26,11 @@ if (empty($report_id) || empty($comment_content)) {
     exit();
 }
 
+if (mb_strlen($comment_content) > 140) {
+    echo json_encode(['success' => false, 'message' => 'コメントは140文字以内で入力してください。']);
+    exit();
+}
+
 try {
     $mysqli->begin_transaction();
 

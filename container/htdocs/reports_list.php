@@ -65,6 +65,16 @@ if ($period !== 'all') {
     $end_date_sql = $end_date_input;
 }
 
+// 絞り込み条件をクエリ文字列として保持するための準備
+$filter_params = [];
+if (!empty($scope)) $filter_params['scope'] = $scope;
+if (!empty($keyword)) $filter_params['keyword'] = $keyword;
+if (!empty($period)) $filter_params['period'] = $period;
+if (!empty($start_date_input)) $filter_params['start_date'] = $start_date_input;
+if (!empty($end_date_input)) $filter_params['end_date'] = $end_date_input;
+$filter_query = http_build_query($filter_params);
+
+
 $reports = [];
 
 // SQLのベース部分を構築
@@ -601,7 +611,7 @@ try {
                                 <div class="report-card-name"><?php echo htmlspecialchars($report['name'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <?php endif; ?>
                         </div>
-                        <a href="reports_detail.php?id=<?php echo htmlspecialchars($report['id'], ENT_QUOTES, 'UTF-8'); ?>" class="report-card-summary" title="<?php echo htmlspecialchars($report['task'], ENT_QUOTES, 'UTF-8'); ?>">
+                        <a href="reports_detail.php?id=<?php echo htmlspecialchars($report['id'], ENT_QUOTES, 'UTF-8'); ?>&<?php echo $filter_query; ?>" class="report-card-summary" title="<?php echo htmlspecialchars($report['task'], ENT_QUOTES, 'UTF-8'); ?>">
                             <?php echo htmlspecialchars($report['task'], ENT_QUOTES, 'UTF-8'); ?>
                         </a>
                     </div>
