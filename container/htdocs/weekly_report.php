@@ -177,7 +177,8 @@ for ($i = 0; $i < 7; $i++) {
 
         /* データ行のスタイル */
         .report-row {
-            height: 78px; /* データ行の高さ */
+            min-height: 78px; /* データ行の最低の高さを設定 */
+            height: auto; /* 内容に合わせて高さを自動調整 */
         }
 
         .report-col {
@@ -208,6 +209,8 @@ for ($i = 0; $i < 7; $i++) {
             justify-content: flex-start; /* Align text to the left */
             text-align: left;
             font-size: 16px;
+            white-space: pre-wrap; /* 改行を保持しつつ、自動で折り返す */
+            word-break: break-all; /* 長い単語でも強制的に折り返す */
         }
 
         /* Custom Scrollbar for Notification List (Seek Bar) */
