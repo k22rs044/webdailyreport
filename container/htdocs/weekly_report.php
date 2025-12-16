@@ -200,8 +200,8 @@ for ($i = 0; $i < 7; $i++) {
             border-left: 1px solid #FFFFFF;
             border-right: 1px solid #FFFFFF;
             font-size: 16px;
-            overflow: hidden; /* テキストがはみ出す場合を考慮 */
-            white-space: nowrap; /* テキストの折り返しを防ぐ */
+            white-space: normal; /* テキストを折り返す */
+            word-break: break-word; /* 単語の境界で折り返す */
         }
 
         .col-details {
@@ -210,7 +210,7 @@ for ($i = 0; $i < 7; $i++) {
             text-align: left;
             font-size: 16px;
             white-space: pre-wrap; /* 改行を保持しつつ、自動で折り返す */
-            word-break: break-all; /* 長い単語でも強制的に折り返す */
+            word-break: break-word; /* 長い単語を単語の境界で折り返す */
         }
 
         /* Custom Scrollbar for Notification List (Seek Bar) */
@@ -452,31 +452,6 @@ for ($i = 0; $i < 7; $i++) {
         async function markNotificationsAsRead(commentIds) { if (commentIds.length === 0) return; const formData = new FormData(); formData.append('comment_ids', JSON.stringify(commentIds)); if (navigator.sendBeacon) { navigator.sendBeacon('mark_notifications_read.php', formData); } else { try { await fetch('mark_notifications_read.php', { method: 'POST', body: formData, keepalive: true }); } catch (error) { console.error('通知の既読化に失敗しました:', error); } } }
 
         checkUnreadNotifications();
-
-        // --- タイトル列のフォントサイズ調整機能 ---
-        function adjustTitleFontSize(element) {
-            // スタイルを一時的に変更して正確なテキスト幅を取得
-            element.style.fontSize = '16px'; // 基準フォントサイズ
-            element.style.overflow = 'visible';
-
-            // padding (左右15pxずつ) を考慮
-            const containerWidth = element.clientWidth - 30; 
-            const textWidth = element.scrollWidth;
-            let fontSize = 16;
-
-            // テキストの幅がコンテナを超える場合、フォントサイズを計算して縮小
-            if (textWidth > containerWidth) {
-                fontSize = Math.floor(16 * (containerWidth / textWidth));
-                fontSize = Math.max(fontSize, 8); // 最小フォントサイズを8pxに設定
-            }
-
-            element.style.fontSize = fontSize + 'px';
-            element.style.overflow = 'hidden'; // スタイルを元に戻す
-        }
-
-        // すべての.col-title要素に適用
-        const titleCols = document.querySelectorAll('.col-title');
-        titleCols.forEach(adjustTitleFontSize);
 
     });
     </script>
