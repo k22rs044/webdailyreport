@@ -320,6 +320,8 @@ $display_time_val = "{$work_hours_val}時間{$work_minutes_val}分";
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         const workTimeInput = document.getElementById('work-time-input');
+        const workTimeMinutesHidden = document.getElementById('work-time-minutes');
+        const form = document.querySelector('form'); // フォーム要素を取得
 
         function updateTotalMinutes() {
             const input = workTimeInput.value.trim();
@@ -361,6 +363,12 @@ $display_time_val = "{$work_hours_val}時間{$work_minutes_val}分";
 
         workTimeInput.addEventListener('blur', updateTotalMinutes);
 
+        // フォーム送信直前に必ず時間計算を実行する
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                updateTotalMinutes();
+            });
+        }
 
         // --- Popup Logic ---
         const summaryInput = document.getElementById('summary');
