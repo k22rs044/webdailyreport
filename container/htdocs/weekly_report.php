@@ -156,7 +156,7 @@ for ($i = 0; $i < 7; $i++) {
             display: flex;
             flex-direction: column;
             gap: 13px; /* Spacing between rows */
-            align-items: center; /* リスト全体を中央寄せに戻す */
+            align-items: center; /* リスト全体を中央寄せ */
         }
 
         .report-row, .report-header {
@@ -458,6 +458,4 @@ for ($i = 0; $i < 7; $i++) {
 </body>
 </html>
 
-<!--
-[PROMPT_SUGGESTION]この週報をPDFとしてエクスポートする機能を追加してください。[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]週を選択するためのドロップダウンメニューをページ上部に追加してください。[/PROMPT_SUGGESTION]
+

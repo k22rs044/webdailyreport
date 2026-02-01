@@ -548,7 +548,7 @@ header {
                 <div class="sort-bar">
                     <span>並び替え</span>
                     <select name="sort_by" onchange="this.form.submit()">
-                        <option value="user_id" <?php if ($sort_by === 'user_id') echo 'selected'; ?>>学籍番号</option>
+                        <option value="user_id" <?php if ($sort_by === 'user_id') echo 'selected'; ?>>ユーザーID</option>
                         <option value="submission_count" <?php if ($sort_by === 'submission_count') echo 'selected'; ?>>提出日数</option>
                         <option value="submission_rate" <?php if ($sort_by === 'submission_rate') echo 'selected'; ?>>提出率</option>
                         <option value="days_since_last_report" <?php if ($sort_by === 'days_since_last_report') echo 'selected'; ?>>最終提出日</option>
@@ -570,7 +570,7 @@ header {
                 <div class="col col-checkbox">
                     <input type="checkbox" id="select-all">
                 </div>
-                <div class="col col-id">学籍番号</div>
+                <div class="col col-id">ユーザーID</div>
                 <div class="col col-name">氏名</div>
                 <div class="col col-email">メールアドレス</div>
                 <div class="col col-role">権限</div>
@@ -611,7 +611,7 @@ header {
             <h2>ユーザー 新規登録</h2>
             <form id="new-user-form">
                 <div class="popup-form-group">
-                    <label for="new-user-id">学籍番号</label>
+                    <label for="new-user-id">ユーザーID(学籍番号)</label>
                     <input type="text" id="new-user-id" name="user_id" required>
                 </div>
                 <div class="popup-form-group">
@@ -642,22 +642,22 @@ header {
         <div class="delete-user-popup-window">
             <h3 class="popup-title">以下のユーザーを削除します</h3>
             <div id="delete-user-list" class="delete-user-list">
-                <!-- 削除対象ユーザーがここに挿入されます -->
+                <!-- 削除対象ユーザーがここに入る -->
             </div>
             <form id="delete-user-form" class="popup-buttons">
-                <!-- 削除対象のIDがここに挿入されます -->
+                <!-- 削除対象のIDがここに入る>
                 <button type="button" id="cancel-delete-user" class="popup-button popup-cancel-button">キャンセル</button>
                 <button type="submit" class="popup-button popup-submit-button">削除</button>
             </form>
         </div>
     </div>
 
-    <!-- 通知 Popup -->
+    <!--通知ポップアップ-->
     <div id="notification-popup-overlay" class="popup-overlay">
         <div class="popup-window notification-popup-window">
             <h3 class="popup-title">新しい通知</h3>
             <div id="notification-list" class="popup-list">
-                <!-- 通知がここに動的に挿入されます -->
+                <!-- 通知がここに動的に入る-->
                 <div class="popup-list-item">通知はありません</div>
             </div>
             <button class="popup-close-button">閉じる</button>
@@ -676,7 +676,7 @@ header {
                 });
             });
 
-            // 新規登録 Popup
+            // 新規登録ポップアップ
             const newUserPopup = document.getElementById('new-user-popup');
             const showNewUserPopupBtn = document.getElementById('show-new-user-popup');
             const cancelNewUserBtn = document.getElementById('cancel-new-user');
@@ -717,7 +717,7 @@ header {
                 }
             });
 
-            // 削除 Popup
+            // 削除ポップアップ
             const deleteUserPopup = document.getElementById('delete-user-popup');
             const showDeletePopupBtn = document.getElementById('show-delete-popup');
             const cancelDeleteUserBtn = document.getElementById('cancel-delete-user');
@@ -779,7 +779,7 @@ header {
                 }
             });
 
-            // --- 通知ポップアップ機能 ---
+            // 通知ポップアップ機能
             const notificationBell = document.getElementById('notification-bell-icon');
             const notificationPopup = document.getElementById('notification-popup-overlay');
             const notificationList = document.getElementById('notification-list');
@@ -791,7 +791,7 @@ header {
             notificationPopup.style.display = 'none';
         });
 
-        // ポップアップの外側（オーバーレイ）をクリックしたときに閉じる
+        // ポップアップの外側をクリックしたときに閉じる
         notificationPopup.addEventListener('click', (e) => {
             if (e.target === notificationPopup) {
                 notificationPopup.style.display = 'none';

@@ -784,7 +784,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             </div>
             <div class="header-right">
                 <nav class="header-nav">
-                    <a href="top.php">TOP</a>
+                    <a href="top.php">日報作成</a>
                     <a href="reports_list.php">日報一覧</a>
                     <a href="weekly_report.php">仮週報作成</a>
                     <a href="mypage.php">マイページ</a>
@@ -1421,7 +1421,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
             });
         }
 
-        // 通知ポップアップを閉じる処理 (オーバーレイまたは閉じるボタン)
+        // 通知ポップアップを閉じる処理
         notificationPopup.addEventListener('click', (e) => {
             if (e.target === notificationPopup || e.target === closeNotificationBtn) {
                 notificationPopup.style.display = 'none';

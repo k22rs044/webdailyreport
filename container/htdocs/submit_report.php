@@ -62,7 +62,7 @@ try {
     }
     
     // 型のバインド: report_id(s), user_id(s), report_date(s), task(s), detail(s), next_task(s), work_start(s), work_end(s), work_time(i)
-    // 9つの変数に対応する型を指定します。work_timeはINT型なので 'i' を使用します。
+    // 9つの変数に対応する型を指定。
     $stmt->bind_param('ssssssssi',
                     $report_id, 
                     $user_id, 
@@ -84,7 +84,7 @@ try {
     exit;
 
 } catch (mysqli_sql_exception $e) {
-    // 主キー重複や外部キー制約エラーなど、SQL固有のエラーを捕捉
+    // 主キー重複や外部キー制約エラーなど、SQLのエラー
     error_log("SQL Error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'データベースエラーが発生しました。']);

@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $report) {
 
         try {
             // データベースを更新
-            // report_idに依存せず、user_idとreport_dateで確実に更新対象を特定する
+            // report_idに依存せず、user_idとreport_dateで更新対象を特定する
             $update_sql = "UPDATE Report SET task = ?, detail = ?, next_task = ?, work_time = ? WHERE user_id = ? AND report_date = ?";
             $update_stmt = $mysqli->prepare($update_sql);
             $update_stmt->bind_param('sssiss', $summary, $details, $next_summary, $work_time_total_minutes, $user_id, $db_report['report_date']);
@@ -163,7 +163,7 @@ $display_time_val = "{$work_hours_val}時間{$work_minutes_val}分";
         .form-group input[type="text"], .form-group textarea { width: 100%; background: #FFFFFF; border-radius: 7px; border: 1px solid #ccc; padding: 8px 12px; box-sizing: border-box; font-size: 18px; font-family: 'Inter', sans-serif; }
         .form-group textarea { height: 262px; resize: vertical; padding: 12px; }
 
-        /* 作業時間入力欄のスタイル調整 */
+        /* 作業時間入力欄の調整 */
         .time-input-group {
             display: flex;
             justify-content: flex-start; /* 左揃えに変更 */
