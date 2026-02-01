@@ -300,7 +300,7 @@ for ($i = 0; $i < 7; $i++) {
             </div>
             <div class="header-right">
                 <nav class="header-nav">
-                    <a href="top.php">TOP</a>
+                    <a href="top.php">日報作成</a>
                     <a href="reports_list.php">日報一覧</a>
                     <a href="weekly_report.php">仮週報作成</a>
                     <a href="mypage.php">マイページ</a>
@@ -334,7 +334,7 @@ for ($i = 0; $i < 7; $i++) {
                 <!-- Header Row -->
                 <div class="report-header">
                     <div class="report-col col-date">日付</div>
-                    <div class="report-col col-title">タイトル</div>
+                    <div class="report-col col-title">作業概要</div>
                     <div class="report-col col-details">作業詳細</div>
                 </div>
 

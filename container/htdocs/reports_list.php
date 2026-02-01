@@ -83,15 +83,15 @@ $types = '';
 
 // scopeが'all'の場合はUserテーブルとJOINして氏名を取得
 if ($scope === 'all') {
-    $sql_base = "SELECT r.report_id, r.report_date, r.task, u.name FROM Report r JOIN User u ON r.user_id = u.user_id";
+    $sql_base = "SELECT r.report_id, r.report_date, r.task, r.user_id, u.name FROM Report r JOIN User u ON r.user_id = u.user_id";
 } else {
     // scopeが'mine'の場合
     if ($is_admin) {
         // 管理者が自分の日報を見る場合もJOINしておく（nameカラムを揃えるため）
-        $sql_base = "SELECT r.report_id, r.report_date, r.task, u.name FROM Report r JOIN User u ON r.user_id = u.user_id";
+        $sql_base = "SELECT r.report_id, r.report_date, r.task, r.user_id, u.name FROM Report r JOIN User u ON r.user_id = u.user_id";
     } else {
         // 一般ユーザーが自分の日報を見る場合
-        $sql_base = "SELECT report_id, report_date, task FROM Report";
+        $sql_base = "SELECT report_id, report_date, task, user_id FROM Report";
     }
 }
 
@@ -152,6 +152,7 @@ try {
             'id'   => $row['report_id'],
             'date' => $date->format('n月j日'),
             'task' => $row['task'],
+            'user_id' => $row['user_id'],
             'name' => $row['name'] ?? null // 管理者でない場合はnull
         ];
     }
@@ -196,13 +197,11 @@ try {
             justify-content: center;
             align-items: center;
             color: #FFFFFF;
-            /* --- 変更ここから --- */
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             z-index: 100; /* 他の要素より手前に表示 */
-            /* --- 変更ここまで --- */
         }
 
         .header-container {
@@ -504,6 +503,9 @@ try {
         .report-card-summary:hover {
             background-color: #f0f8ff;
         }
+        .report-card-summary.is-goomy:hover {
+            background-color: #e4dbf4;
+        }
 
         /* 表示範囲切り替えスイッチ */
         .scope-switch {
@@ -537,7 +539,7 @@ try {
             </div>
             <div class="header-right">
                 <nav class="header-nav">
-                    <a href="top.php">TOP</a>
+                    <a href="top.php">日報作成</a>
                     <a href="reports_list.php">日報一覧</a>
                     <a href="weekly_report.php">仮週報作成</a>
                     <a href="mypage.php">マイページ</a>
@@ -604,14 +606,14 @@ try {
 
             <section class="report-grid <?php if (count($reports) <= 6) echo 'few-items'; ?>">
                 <?php foreach ($reports as $report): ?>
-                    <div class="report-card">
+                    <div class="report-card" style="<?php echo (strtolower(trim($report['user_id'])) === 'goomy') ? 'background-color: #b8afd7 !important;' : ''; ?>">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div class="report-card-date"><?php echo htmlspecialchars($report['date'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <?php if ($scope === 'all' && isset($report['name'])): ?>
                                 <div class="report-card-name"><?php echo htmlspecialchars($report['name'], ENT_QUOTES, 'UTF-8'); ?></div>
                             <?php endif; ?>
                         </div>
-                        <a href="reports_detail.php?id=<?php echo htmlspecialchars($report['id'], ENT_QUOTES, 'UTF-8'); ?>&<?php echo $filter_query; ?>" class="report-card-summary" title="<?php echo htmlspecialchars($report['task'], ENT_QUOTES, 'UTF-8'); ?>">
+                        <a href="reports_detail.php?id=<?php echo htmlspecialchars($report['id'], ENT_QUOTES, 'UTF-8'); ?>&<?php echo $filter_query; ?>" class="report-card-summary <?php echo (strtolower(trim($report['user_id'])) === 'goomy') ? 'is-goomy' : ''; ?>" title="<?php echo htmlspecialchars($report['task'], ENT_QUOTES, 'UTF-8'); ?>" style="<?php echo (strtolower(trim($report['user_id'])) === 'goomy') ? 'border: 2px solid #7d6eb0 !important;' : ''; ?>">
                             <?php echo htmlspecialchars($report['task'], ENT_QUOTES, 'UTF-8'); ?>
                         </a>
                     </div>
